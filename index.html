@@ -201,15 +201,27 @@ function collectAllInputs() {
       const nm = document.getElementById('ing-name-' + r.id);
       const wt = document.getElementById('ing-wt-' + r.id);
       const ck = document.getElementById('ing-ck-' + r.id);
+      const un = document.getElementById('ing-un-' + r.id);
       if (nm) r.name = nm.value;
-      if (wt) r.weight = parseFloat(wt.value) || 0;
+      if (un) r.unit = un.value; // 'g' or 'kg'
+      if (wt) {
+        const raw = parseFloat(wt.value) || 0;
+        r.weight = (r.unit === 'kg') ? raw * 1000 : raw; // 항상 g으로 저장
+        r.displayWeight = raw; // 화면 표시용
+      }
       if (ck) r.isUnit = ck.checked;
     });
     p.supplements.forEach(r => {
       const nm = document.getElementById('sup-name-' + r.id);
       const wt = document.getElementById('sup-wt-' + r.id);
+      const un = document.getElementById('sup-un-' + r.id);
       if (nm) r.name = nm.value;
-      if (wt) r.weight = parseFloat(wt.value) || 0;
+      if (un) r.unit = un.value;
+      if (wt) {
+        const raw = parseFloat(wt.value) || 0;
+        r.weight = (r.unit === 'kg') ? raw * 1000 : raw;
+        r.displayWeight = raw;
+      }
     });
   });
   collectPrices();
@@ -251,7 +263,7 @@ function applyPaste(pid, type, text) {
   const arr = type === 'ing' ? p.ingredients : p.supplements;
   const filtered = arr.filter(r => r.name.trim() || r.weight > 0);
   parsed.forEach(item => {
-    filtered.push({ id: uid(), name: item.name, weight: item.weight, isUnit: type === 'ing' ? item.isUnit : false });
+    filtered.push({ id: uid(), name: item.name, weight: item.weight, unit: 'g', isUnit: type === 'ing' ? item.isUnit : false });
   });
   if (type === 'ing') p.ingredients = filtered;
   else p.supplements = filtered;
@@ -284,7 +296,7 @@ function addIngredient(pid, type) {
   collectAllInputs();
   const p = state.products.find(p => p.id === pid);
   if (!p) return;
-  const newR = { id: uid(), name: '', weight: 0, isUnit: false };
+  const newR = { id: uid(), name: '', weight: 0, unit: 'g', isUnit: false };
   (type === 'ing' ? p.ingredients : p.supplements).push(newR);
   renderProducts();
   syncPriceTab();
@@ -322,17 +334,25 @@ function renderProducts() {
       <table>
         <thead><tr>
           <th>원료명</th>
-          <th style="text-align:right;width:100px">레시피 무게 (g)</th>
+          <th style="text-align:right;width:138px">레시피 무게</th>
           <th style="text-align:center;width:64px">생산단위</th>
           <th style="width:28px"></th>
         </tr></thead>
         <tbody id="ing-tbody-${p.id}">
-        ${p.ingredients.map(r => `<tr>
+        ${p.ingredients.map(r => {
+          const dispW = r.unit === 'kg' ? (r.weight / 1000) : r.weight;
+          return `<tr>
           <td><input type="text" id="ing-name-${r.id}" value="${esc(r.name)}" placeholder="원료명"></td>
-          <td><input type="number" id="ing-wt-${r.id}" value="${r.weight || ''}" placeholder="0" min="0"></td>
+          <td style="display:flex;align-items:center;gap:3px;justify-content:flex-end">
+            <input type="number" id="ing-wt-${r.id}" value="${dispW || ''}" placeholder="0" min="0" step="any" style="width:80px;text-align:right">
+            <select id="ing-un-${r.id}" class="unit-sel" style="width:48px;font-size:12px;padding:2px 2px;background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer">
+              <option value="g" ${(!r.unit || r.unit==='g') ? 'selected' : ''}>g</option>
+              <option value="kg" ${r.unit==='kg' ? 'selected' : ''}>kg</option>
+            </select>
+          </td>
           <td style="text-align:center"><input type="checkbox" id="ing-ck-${r.id}" ${r.isUnit ? 'checked' : ''}></td>
           <td><span class="del-row" data-pid="${p.id}" data-type="ing" data-rid="${r.id}" style="cursor:pointer;color:var(--text3);font-size:16px">×</span></td>
-        </tr>`).join('')}
+        </tr>`;}).join('')}
         </tbody>
       </table>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
@@ -344,15 +364,23 @@ function renderProducts() {
       <table>
         <thead><tr>
           <th>영양제명</th>
-          <th style="text-align:right;width:100px">레시피 무게 (g)</th>
+          <th style="text-align:right;width:138px">레시피 무게</th>
           <th style="width:28px"></th>
         </tr></thead>
         <tbody id="sup-tbody-${p.id}">
-        ${p.supplements.map(r => `<tr>
+        ${p.supplements.map(r => {
+          const dispW = r.unit === 'kg' ? (r.weight / 1000) : r.weight;
+          return `<tr>
           <td><input type="text" id="sup-name-${r.id}" value="${esc(r.name)}" placeholder="영양제명"></td>
-          <td><input type="number" id="sup-wt-${r.id}" value="${r.weight || ''}" placeholder="0" min="0"></td>
+          <td style="display:flex;align-items:center;gap:3px;justify-content:flex-end">
+            <input type="number" id="sup-wt-${r.id}" value="${dispW || ''}" placeholder="0" min="0" step="any" style="width:80px;text-align:right">
+            <select id="sup-un-${r.id}" class="unit-sel" style="width:48px;font-size:12px;padding:2px 2px;background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer">
+              <option value="g" ${(!r.unit || r.unit==='g') ? 'selected' : ''}>g</option>
+              <option value="kg" ${r.unit==='kg' ? 'selected' : ''}>kg</option>
+            </select>
+          </td>
           <td><span class="del-row" data-pid="${p.id}" data-type="sup" data-rid="${r.id}" style="cursor:pointer;color:var(--text3);font-size:16px">×</span></td>
-        </tr>`).join('')}
+        </tr>`;}).join('')}
         </tbody>
       </table>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
