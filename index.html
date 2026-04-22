@@ -523,6 +523,10 @@ function buildResultCards() {
         <div class="rcard-name">${esc(p.name)}</div>
         ${unitCtrl}
       </div>
+      <div style="padding:6px 18px 0;display:flex;align-items:center;gap:6px">
+        <input type="checkbox" id="suponly-${pid}" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent)" onchange="updateCard('${pid}')">
+        <label for="suponly-${pid}" style="font-size:12px;color:var(--text2);cursor:pointer;user-select:none">영양제만 보기</label>
+      </div>
       <div class="rcard-body" id="rbody-${pid}"></div>
       <div class="rcard-foot" id="rfoot-${pid}"></div>
     </div>`;
@@ -571,8 +575,9 @@ function updateCard(pid) {
   const rb = document.getElementById('uratio-' + pid);
   if (rb) rb.textContent = hasInput ? `× ${fmt(ratio)}` : '× —';
 
+  const supOnly = document.getElementById('suponly-' + pid)?.checked || false;
   const allRows = [
-    ...p.ingredients.map(r => ({...r, kind:'ing'})),
+    ...(supOnly ? [] : p.ingredients.map(r => ({...r, kind:'ing'}))),
     ...p.supplements.map(r => ({...r, kind:'sup'}))
   ].filter(r => r.name.trim() && r.weight > 0);
 
