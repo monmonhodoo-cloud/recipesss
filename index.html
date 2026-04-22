@@ -555,17 +555,19 @@ function getRatio(pid) {
   const sel   = document.getElementById('usel-' + pid);
   const wtEl  = document.getElementById('uwt-' + pid);
   const selId = sel?.value;
-  const inputW = parseFloat(wtEl?.value) || 0;
+  const inputRaw = parseFloat(wtEl?.value) || 0; // 화면 입력값 (표시 단위)
   const selIng = p.ingredients.find(r => r.id === selId);
   if (!selIng || selIng.weight <= 0) return { ratio:1, baseW:0, inputW:0, unitName:'', hasInput:false, unitDisp:'g' };
-  if (inputW <= 0) return { ratio:1, baseW:selIng.weight, inputW:0, unitName:selIng.name, hasInput:false, unitDisp:selIng.unit||'g' };
-  return { ratio: inputW / selIng.weight, baseW: selIng.weight, inputW, unitName: selIng.name, hasInput: true, unitDisp: selIng.unit || 'g' };
+  const unit = selIng.unit || 'g';
+  const inputWg = unit === 'kg' ? inputRaw * 1000 : inputRaw; // g으로 변환해서 ratio 계산
+  if (inputRaw <= 0) return { ratio:1, baseW:selIng.weight, inputW:0, inputRaw:0, unitName:selIng.name, hasInput:false, unitDisp:unit };
+  return { ratio: inputWg / selIng.weight, baseW: selIng.weight, inputW: inputWg, inputRaw, unitName: selIng.name, hasInput: true, unitDisp: unit };
 }
 
 function updateCard(pid) {
   const p = state.products.find(x => x.id === pid);
   if (!p) return;
-  const { ratio, baseW, inputW, unitName, hasInput, unitDisp } = getRatio(pid);
+  const { ratio, baseW, inputW, inputRaw, unitName, hasInput, unitDisp } = getRatio(pid);
   const rb = document.getElementById('uratio-' + pid);
   if (rb) rb.textContent = hasInput ? `× ${fmt(ratio)}` : '× —';
 
@@ -610,7 +612,7 @@ function updateCard(pid) {
     </table>`;
 
   const baseDisp = unitDisp==='kg' ? fmt(baseW/1000)+'kg' : fmt(baseW)+'g';
-  const inDisp  = unitDisp==='kg' ? fmt(inputW/1000)+'kg' : fmt(inputW)+'g';
+  const inDisp  = unitDisp==='kg' ? fmt(inputRaw)+'kg' : fmt(inputW)+'g';
   const footDesc = hasInput
     ? `${esc(unitName)} ${inDisp} 입력 (기준 ${baseDisp} → × ${fmt(ratio)})`
     : unitName ? `${esc(unitName)} 중량 입력 전 — 레시피 기준` : '레시피 1배치 기준';
