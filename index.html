@@ -202,14 +202,17 @@ function collectAllInputs() {
       const wt = document.getElementById('ing-wt-' + r.id);
       const ck = document.getElementById('ing-ck-' + r.id);
       const un = document.getElementById('ing-un-' + r.id);
+      const uname = document.getElementById('ing-uname-' + r.id);
       if (nm) r.name = nm.value;
-      if (un) r.unit = un.value; // 'g' or 'kg'
+      if (un) r.unit = un.value;
       if (wt) {
         const raw = parseFloat(wt.value) || 0;
-        r.weight = (r.unit === 'kg') ? raw * 1000 : raw; // 항상 g으로 저장
-        r.displayWeight = raw; // 화면 표시용
+        r.weight = (r.unit === 'kg') ? raw * 1000 : raw;
+        r.displayWeight = raw;
       }
       if (ck) r.isUnit = ck.checked;
+      if (uname) r.unitName = uname.value.trim();
+      else if (!r.isUnit) r.unitName = '';
     });
     p.supplements.forEach(r => {
       const nm = document.getElementById('sup-name-' + r.id);
@@ -296,7 +299,7 @@ function addIngredient(pid, type) {
   collectAllInputs();
   const p = state.products.find(p => p.id === pid);
   if (!p) return;
-  const newR = { id: uid(), name: '', weight: 0, unit: 'g', isUnit: false };
+  const newR = { id: uid(), name: '', weight: 0, unit: 'g', isUnit: false, unitName: '' };
   (type === 'ing' ? p.ingredients : p.supplements).push(newR);
   renderProducts();
   syncPriceTab();
@@ -336,6 +339,7 @@ function renderProducts() {
           <th>원료명</th>
           <th style="text-align:right;width:138px">레시피 무게</th>
           <th style="text-align:center;width:64px">생산단위</th>
+          <th style="width:100px;font-size:11px;color:var(--text3)">단위명 <span style="font-weight:400">(생산단위용)</span></th>
           <th style="width:28px"></th>
         </tr></thead>
         <tbody id="ing-tbody-${p.id}">
@@ -351,6 +355,9 @@ function renderProducts() {
             </select>
           </td>
           <td style="text-align:center"><input type="checkbox" id="ing-ck-${r.id}" ${r.isUnit ? 'checked' : ''}></td>
+          <td style="min-width:70px">
+            ${r.isUnit ? `<input type="text" id="ing-uname-${r.id}" value="${esc(r.unitName||'')}" placeholder="단위명(마리,개..)" style="width:90px;font-size:12px;color:var(--text2);background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 5px">` : ''}
+          </td>
           <td><span class="del-row" data-pid="${p.id}" data-type="ing" data-rid="${r.id}" style="cursor:pointer;color:var(--text3);font-size:16px">×</span></td>
         </tr>`;}).join('')}
         </tbody>
@@ -504,8 +511,8 @@ function buildResultCards() {
     const hasUnit = unitIngs.length > 0;
     const unitOpts = hasUnit
       ? unitIngs.map(r => {
-        const dispBase = r.unit === 'kg' ? fmt(r.weight/1000)+'kg' : fmt(r.weight)+'g';
-        return `<option value="${r.id}" data-base="${r.weight}">${esc(r.name)} (기준 ${dispBase})</option>`;
+        const dispBase = r.unit === 'kg' ? fmt(r.weight/1000)+(r.unitName||'kg') : fmt(r.weight)+(r.unitName||'g');
+        return `<option value="${r.id}" data-base="${r.weight}" data-unitname="${esc(r.unitName||'')}">${esc(r.name)} (기준 ${dispBase})</option>`;
       }).join('') : '';
     const unitCtrl = hasUnit ? `
       <div class="unit-ctrl">
@@ -513,7 +520,7 @@ function buildResultCards() {
         <select class="unit-select" id="usel-${pid}" onchange="onUnitChange('${pid}')">${unitOpts}</select>
         <div class="unit-input-wrap">
           <input class="unit-weight-input" type="number" id="uwt-${pid}" value="" placeholder="0" min="0" step="0.1" oninput="updateCard('${pid}')">
-          <span class="unit-weight-unit" id="uwunit-${pid}">${unitIngs[0]?.unit||"g"}</span>
+          <span class="unit-weight-unit" id="uwunit-${pid}">${unitIngs[0]?.unitName || unitIngs[0]?.unit || "g"}</span>
         </div>
         <span class="ratio-badge" id="uratio-${pid}">× —</span>
       </div>`
@@ -546,32 +553,34 @@ function onUnitChange(pid) {
     const unit = selIng?.unit || 'g';
     const dispBase = unit==='kg' ? fmt(base/1000) : fmt(base);
     wt.placeholder = dispBase || '0';
-    if (ut) ut.textContent = unit;
+    // select 옵션 텍스트도 uname 반영 (이미 렌더 시 반영됨)
+    if (ut) ut.textContent = selIng?.unitName || unit;
   }
   updateCard(pid);
 }
 
 function getRatio(pid) {
   const p = state.products.find(x => x.id === pid);
-  if (!p) return { ratio:1, baseW:0, inputW:0, unitName:'', hasInput:false, unitDisp:'g' };
+  if (!p) return { ratio:1, baseW:0, inputW:0, unitName:'', hasInput:false, unitDisp:'g', uname:'' };
   const unitIngs = p.ingredients.filter(r => r.isUnit && r.name.trim() && r.weight > 0);
-  if (!unitIngs.length) return { ratio:1, baseW:0, inputW:0, unitName:'', hasInput:false, unitDisp:'g' };
+  if (!unitIngs.length) return { ratio:1, baseW:0, inputW:0, unitName:'', hasInput:false, unitDisp:'g', uname:'' };
   const sel   = document.getElementById('usel-' + pid);
   const wtEl  = document.getElementById('uwt-' + pid);
   const selId = sel?.value;
   const inputRaw = parseFloat(wtEl?.value) || 0; // 화면 입력값 (표시 단위)
   const selIng = p.ingredients.find(r => r.id === selId);
-  if (!selIng || selIng.weight <= 0) return { ratio:1, baseW:0, inputW:0, unitName:'', hasInput:false, unitDisp:'g' };
+  if (!selIng || selIng.weight <= 0) return { ratio:1, baseW:0, inputW:0, unitName:'', hasInput:false, unitDisp:'g', uname:'' };
   const unit = selIng.unit || 'g';
   const inputWg = unit === 'kg' ? inputRaw * 1000 : inputRaw; // g으로 변환해서 ratio 계산
-  if (inputRaw <= 0) return { ratio:1, baseW:selIng.weight, inputW:0, inputRaw:0, unitName:selIng.name, hasInput:false, unitDisp:unit };
-  return { ratio: inputWg / selIng.weight, baseW: selIng.weight, inputW: inputWg, inputRaw, unitName: selIng.name, hasInput: true, unitDisp: unit };
+  if (inputRaw <= 0) return { ratio:1, baseW:selIng.weight, inputW:0, inputRaw:0, unitName:selIng.name, hasInput:false, unitDisp:unit, uname:selIng.unitName||'' };
+  const uname = selIng.unitName || '';
+  return { ratio: inputWg / selIng.weight, baseW: selIng.weight, inputW: inputWg, inputRaw, unitName: selIng.name, hasInput: true, unitDisp: unit, uname };
 }
 
 function updateCard(pid) {
   const p = state.products.find(x => x.id === pid);
   if (!p) return;
-  const { ratio, baseW, inputW, inputRaw, unitName, hasInput, unitDisp } = getRatio(pid);
+  const { ratio, baseW, inputW, inputRaw, unitName, hasInput, unitDisp, uname } = getRatio(pid);
   const rb = document.getElementById('uratio-' + pid);
   if (rb) rb.textContent = hasInput ? `× ${fmt(ratio)}` : '× —';
 
@@ -616,8 +625,9 @@ function updateCard(pid) {
       </tbody>
     </table>`;
 
-  const baseDisp = unitDisp==='kg' ? fmt(baseW/1000)+'kg' : fmt(baseW)+'g';
-  const inDisp  = unitDisp==='kg' ? fmt(inputRaw)+'kg' : fmt(inputW)+'g';
+  const dispUnit = uname || (unitDisp==='kg' ? 'kg' : 'g');
+  const baseDisp = uname ? fmt(baseW/(unitDisp==='kg'?1000:1))+(unitDisp==='kg'?'kg':'g')+'/'+uname : (unitDisp==='kg' ? fmt(baseW/1000)+'kg' : fmt(baseW)+'g');
+  const inDisp   = fmt(inputRaw) + dispUnit;
   const footDesc = hasInput
     ? `${esc(unitName)} ${inDisp} 입력 (기준 ${baseDisp} → × ${fmt(ratio)})`
     : unitName ? `${esc(unitName)} 중량 입력 전 — 레시피 기준` : '레시피 1배치 기준';
