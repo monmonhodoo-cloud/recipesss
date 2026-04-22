@@ -574,7 +574,10 @@ function getRatio(pid) {
   const inputWg = unit === 'kg' ? inputRaw * 1000 : inputRaw; // g으로 변환해서 ratio 계산
   if (inputRaw <= 0) return { ratio:1, baseW:selIng.weight, inputW:0, inputRaw:0, unitName:selIng.name, hasInput:false, unitDisp:unit, uname:selIng.unitName||'' };
   const uname = selIng.unitName || '';
-  return { ratio: inputWg / selIng.weight, baseW: selIng.weight, inputW: inputWg, inputRaw, unitName: selIng.name, hasInput: true, unitDisp: unit, uname };
+  // 단위명 있으면: 입력값 = 몇 마리(배치 수) → ratio = inputRaw
+  // 단위명 없으면: 입력값 = 중량 → ratio = inputWg / baseWeight
+  const ratio = uname ? inputRaw : inputWg / selIng.weight;
+  return { ratio, baseW: selIng.weight, inputW: uname ? inputRaw * selIng.weight : inputWg, inputRaw, unitName: selIng.name, hasInput: true, unitDisp: unit, uname };
 }
 
 function updateCard(pid) {
