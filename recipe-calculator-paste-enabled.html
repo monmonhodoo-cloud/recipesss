@@ -207,11 +207,68 @@ function collectPrices(){
 
 function addProduct(){collectAllInputs();state.products.push({id:uid(),name:'',ingredients:[],supplements:[]});renderProducts();syncPriceTab()}
 function removeProduct(id){collectAllInputs();state.products=state.products.filter(p=>p.id!==id);renderProducts();syncPriceTab()}
-function addIngredient(pid,type){
+function addIngredient(pid,type,count=1){
   collectAllInputs();
   const p=state.products.find(p=>p.id===pid);if(!p)return;
-  (type==='ing'?p.ingredients:p.supplements).push({id:uid(),name:'',weight:0,isUnit:false});
+  const arr=type==='ing'?p.ingredients:p.supplements;
+  for(let i=0;i<count;i++)arr.push({id:uid(),name:'',weight:0,isUnit:false});
   renderProducts();syncPriceTab();
+}
+function ensureRows(pid,type,count){
+  const p=state.products.find(p=>p.id===pid);if(!p)return;
+  const arr=type==='ing'?p.ingredients:p.supplements;
+  while(arr.length<count)arr.push({id:uid(),name:'',weight:0,isUnit:false});
+}
+function parsePasteBoolean(value){
+  const v=String(value||'').trim().toLowerCase();
+  return ['true','1','y','yes','o','ok','checked','check','v','✓'].includes(v);
+}
+function handleGridPaste(e){
+  const target=e.target;
+  if(!target || target.tagName!=='INPUT')return;
+  const table=target.dataset.table;
+  const pid=target.dataset.productId;
+  const rowIndex=parseInt(target.dataset.rowIndex||'',10);
+  const colIndex=parseInt(target.dataset.colIndex||'',10);
+  if(!table || !pid || Number.isNaN(rowIndex) || Number.isNaN(colIndex))return;
+
+  const raw=e.clipboardData?.getData('text/plain');
+  if(!raw || !raw.includes('	') && !raw.includes('
+'))return;
+
+  e.preventDefault();
+  collectAllInputs();
+
+  const rows=raw.replace(//g,'').split('
+').filter((_,i,arr)=>!(i===arr.length-1 && arr[i]==='')).map(line=>line.split('	'));
+  if(!rows.length)return;
+
+  const type=table==='ingredients'?'ing':'sup';
+  const colCount=table==='ingredients'?3:2;
+  ensureRows(pid,type,rowIndex+rows.length);
+  const p=state.products.find(x=>x.id===pid);if(!p)return;
+  const arr=type==='ing'?p.ingredients:p.supplements;
+
+  rows.forEach((cols,rOffset)=>{
+    const row=arr[rowIndex+rOffset];
+    if(!row)return;
+    cols.forEach((value,cOffset)=>{
+      const col=colIndex+cOffset;
+      if(col>=colCount)return;
+      if(type==='ing'){
+        if(col===0)row.name=value.trim();
+        else if(col===1)row.weight=parseFloat(String(value).replace(/,/g,''))||0;
+        else if(col===2)row.isUnit=parsePasteBoolean(value);
+      }else{
+        if(col===0)row.name=value.trim();
+        else if(col===1)row.weight=parseFloat(String(value).replace(/,/g,''))||0;
+      }
+    });
+  });
+
+  renderProducts();
+  syncPriceTab();
+  showToast(`붙여넣기 완료 (${rows.length}행)`);
 }
 function removeRow(pid,type,rid){
   collectAllInputs();
@@ -234,10 +291,10 @@ function renderProducts(){
       <div class="slabel" style="margin-top:0">원료</div>
       <table>
         <thead><tr><th>원료명</th><th style="text-align:right;width:100px">레시피 무게 (g)</th><th style="text-align:center;width:64px">생산단위</th><th style="width:28px"></th></tr></thead>
-        <tbody>${p.ingredients.map(r=>`<tr>
-          <td><input type="text" id="ing-name-${r.id}" value="${esc(r.name)}" placeholder="원료명"></td>
-          <td><input type="number" id="ing-wt-${r.id}" value="${r.weight||''}" placeholder="0" min="0"></td>
-          <td style="text-align:center"><input type="checkbox" id="ing-ck-${r.id}" ${r.isUnit?'checked':''}></td>
+        <tbody>${p.ingredients.map((r,idx)=>`<tr>
+          <td><input type="text" id="ing-name-${r.id}" value="${esc(r.name)}" placeholder="원료명" data-table="ingredients" data-product-id="${p.id}" data-row-index="${idx}" data-col-index="0"></td>
+          <td><input type="number" id="ing-wt-${r.id}" value="${r.weight||''}" placeholder="0" min="0" data-table="ingredients" data-product-id="${p.id}" data-row-index="${idx}" data-col-index="1"></td>
+          <td style="text-align:center"><input type="checkbox" id="ing-ck-${r.id}" ${r.isUnit?'checked':''} data-table="ingredients" data-product-id="${p.id}" data-row-index="${idx}" data-col-index="2"></td>
           <td><span style="cursor:pointer;color:var(--text3);font-size:16px" onclick="removeRow('${p.id}','ing','${r.id}')">×</span></td>
         </tr>`).join('')}</tbody>
       </table>
@@ -245,9 +302,9 @@ function renderProducts(){
       <div class="slabel">영양제</div>
       <table>
         <thead><tr><th>영양제명</th><th style="text-align:right;width:100px">레시피 무게 (g)</th><th style="width:28px"></th></tr></thead>
-        <tbody>${p.supplements.map(r=>`<tr>
-          <td><input type="text" id="sup-name-${r.id}" value="${esc(r.name)}" placeholder="영양제명"></td>
-          <td><input type="number" id="sup-wt-${r.id}" value="${r.weight||''}" placeholder="0" min="0"></td>
+        <tbody>${p.supplements.map((r,idx)=>`<tr>
+          <td><input type="text" id="sup-name-${r.id}" value="${esc(r.name)}" placeholder="영양제명" data-table="supplements" data-product-id="${p.id}" data-row-index="${idx}" data-col-index="0"></td>
+          <td><input type="number" id="sup-wt-${r.id}" value="${r.weight||''}" placeholder="0" min="0" data-table="supplements" data-product-id="${p.id}" data-row-index="${idx}" data-col-index="1"></td>
           <td><span style="cursor:pointer;color:var(--text3);font-size:16px" onclick="removeRow('${p.id}','sup','${r.id}')">×</span></td>
         </tr>`).join('')}</tbody>
       </table>
@@ -287,6 +344,7 @@ function switchTab(tab){
   if(tab==='result')renderResultTab();
 }
 document.getElementById('tabBar').addEventListener('click',e=>{const t=e.target.dataset.tab;if(t)switchTab(t)});
+document.getElementById('productList').addEventListener('paste',handleGridPaste);
 
 function renderResultTab(){
   collectAllInputs();
