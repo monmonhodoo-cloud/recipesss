@@ -239,7 +239,8 @@ function handleGridPaste(e){
   e.preventDefault();
   collectAllInputs();
 
-  const rows=raw.replace(//g,'').split('
+  const rows=raw.replace(/
+/g,'').split('
 ').filter((_,i,arr)=>!(i===arr.length-1 && arr[i]==='')).map(line=>line.split('	'));
   if(!rows.length)return;
 
@@ -495,3 +496,12 @@ window.addEventListener('beforeunload',()=>{collectAllInputs();localStorage.setI
 </script>
 </body>
 </html>
+
+<script>
+/* 기존 코드 (그대로) */
+</script>
+
+<script type="module">
+/* 내가 아까 준 Firebase 코드 붙이기 */
+/* + 방금 복사한 firebaseConfig 넣기 */
+</script>
