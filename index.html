@@ -40,12 +40,18 @@
   .tab.active{background:var(--accent);color:var(--accent-text)}
   .card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:14px}
   .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
-  .card.collapsed{padding:14px 18px}
+  .product-list{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:10px;align-items:start}
+  .product-list .card{margin-bottom:0}
+  .card.editing{grid-column:1 / -1}
+  .card.collapsed{padding:12px 14px;cursor:pointer}
   .card.collapsed .card-header{margin-bottom:0}
-  .product-summary{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+  .card.collapsed .card-header{align-items:flex-start;gap:10px}
+  .product-summary{display:flex;flex-direction:column;gap:4px;min-width:0;flex:1}
   .product-title{font-size:15px;font-weight:600;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .product-meta{font-size:12px;color:var(--text2);white-space:nowrap}
   .product-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
+  .card.collapsed .product-actions{gap:4px}
+  .card.collapsed .btn{padding:5px 9px;font-size:12px}
   .product-name-input{font-size:15px;font-weight:600;border:none;outline:none;background:transparent;color:var(--text);width:60%;letter-spacing:-.02em;font-family:inherit}
   .product-name-input::placeholder{color:var(--text3);font-weight:400}
   .slabel{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:14px}
@@ -121,6 +127,7 @@
 
   @media(max-width:540px){
     .container{padding:14px 10px 60px}
+    .product-list{grid-template-columns:1fr}
     .metric-value{font-size:20px}
     .unit-ctrl{gap:6px}
   }
@@ -406,15 +413,17 @@ function renderProducts() {
   document.getElementById('productCount').textContent = state.products.length;
   const el = document.getElementById('productList');
   if (!state.products.length) {
+    el.className = '';
     el.innerHTML = '<div class="empty">제품을 추가해주세요.</div>';
     return;
   }
+  el.className = 'product-list';
   el.innerHTML = state.products.map(p => {
     const isEditing = editingProductId === p.id;
     const title = p.name.trim() || '이름 없는 제품';
     const meta = `원료 ${p.ingredients.length}개 · 영양제 ${p.supplements.length}개`;
     return `
-    <div class="card ${isEditing ? '' : 'collapsed'}">
+    <div class="card ${isEditing ? 'editing' : 'collapsed'}" data-card="${p.id}">
       <div class="card-header">
         ${isEditing
           ? `<input id="pname-${p.id}" class="product-name-input" value="${esc(p.name)}" placeholder="제품명 입력">`
@@ -508,6 +517,8 @@ document.getElementById('productList').addEventListener('click', e => {
   // 행 추가
   const addRow = e.target.closest('[data-addrow]');
   if (addRow) { addIngredient(addRow.dataset.addrow, addRow.dataset.rtype); return; }
+  const collapsedCard = e.target.closest('.card.collapsed[data-card]');
+  if (collapsedCard) { editProduct(collapsedCard.dataset.card); return; }
 });
 
 /* ── 붙여넣기 이벤트 ──
