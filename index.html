@@ -552,6 +552,8 @@
 <script>
 const STORAGE_KEY = "recipe_cost_utf8_v1";
 const ORDER_KEY = "recipe_cost_order_v1";
+const LEGACY_RECIPE_KEY = "rcd6";
+const LEGACY_ORDER_KEY = "order_data";
 
 let state = {
   products: [],
@@ -585,6 +587,74 @@ function fmt(num) {
   return value % 1 === 0
     ? value.toLocaleString()
     : value.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+}
+
+function normalizeRow(row, kind) {
+  return {
+    id: String(row?.id || uid()),
+    name: String(row?.name || "").trim(),
+    alias: kind === "sup" ? String(row?.alias || "") : "",
+    weight: Number(row?.weight) || 0,
+    unit: row?.unit === "kg" ? "kg" : "g",
+    isUnit: kind === "ing" ? Boolean(row?.isUnit) : false,
+    unitName: kind === "ing" ? String(row?.unitName || "") : ""
+  };
+}
+
+function normalizeProduct(product) {
+  return {
+    id: String(product?.id || uid()),
+    name: String(product?.name || "").trim(),
+    ingredients: Array.isArray(product?.ingredients) ? product.ingredients.map(row => normalizeRow(row, "ing")) : [],
+    supplements: Array.isArray(product?.supplements) ? product.supplements.map(row => normalizeRow(row, "sup")) : []
+  };
+}
+
+function migrateLegacyPresets(legacyPresets) {
+  const next = {};
+  Object.entries(legacyPresets || {}).forEach(([productName, list]) => {
+    const normalized = (Array.isArray(list) ? list : [])
+      .map((item, index) => {
+        if (typeof item === "number" || typeof item === "string") {
+          const weight = Number(item);
+          if (!weight) return null;
+          return { code: "", weight, label: "", unitId: "" };
+        }
+        if (item && typeof item === "object") {
+          const weight = Number(item.weight ?? item.value ?? item.grams ?? item.g);
+          if (!weight) return null;
+          return {
+            code: String(item.code || ""),
+            weight,
+            label: String(item.label || item.name || ""),
+            unitId: String(item.unitId || "")
+          };
+        }
+        return null;
+      })
+      .filter(Boolean);
+    if (normalized.length) next[productName] = normalized;
+  });
+  return next;
+}
+
+function migrateLegacyOrderInputs(legacyOrderData, presetMap) {
+  const next = {};
+  Object.entries(legacyOrderData || {}).forEach(([productName, weightMap]) => {
+    const presets = Array.isArray(presetMap?.[productName]) ? presetMap[productName] : [];
+    Object.entries(weightMap || {}).forEach(([weightKey, supMap]) => {
+      const weight = Number(weightKey);
+      const preset = presets.find(item => Number(item.weight) === weight);
+      const presetCode = preset?.code || "";
+      if (!presetCode) return;
+      Object.entries(supMap || {}).forEach(([supplementName, qty]) => {
+        const amount = parseInt(qty, 10) || 0;
+        if (amount <= 0) return;
+        next[`${productName}__${presetCode}__${supplementName}`] = amount;
+      });
+    });
+  });
+  return next;
 }
 
 function showToast(message) {
@@ -634,19 +704,48 @@ function downloadData() {
 }
 
 function loadData() {
+  let loadedRecipe = false;
   try {
     const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || "{}");
-    state.products = saved.products || [];
-    state.prices = saved.prices || {};
-    state.selectedProducts = saved.selectedProducts || [];
-    state.resultOptions = saved.resultOptions || {};
+    if (Array.isArray(saved.products) && saved.products.length) {
+      state.products = saved.products.map(normalizeProduct);
+      state.prices = saved.prices || {};
+      state.selectedProducts = saved.selectedProducts || [];
+      state.resultOptions = saved.resultOptions || {};
+      loadedRecipe = true;
+    }
   } catch (e) {}
 
+  if (!loadedRecipe) {
+    try {
+      const legacy = JSON.parse(localStorage.getItem(LEGACY_RECIPE_KEY) || "{}");
+      state.products = Array.isArray(legacy.products) ? legacy.products.map(normalizeProduct) : [];
+      state.prices = legacy.prices || {};
+      state.selectedProducts = legacy.selectedProducts || [];
+      state.resultOptions = legacy.resultOptions || {};
+      if (state.products.length) saveRecipeData();
+    } catch (e) {}
+  }
+
+  let loadedOrder = false;
   try {
     const savedOrder = JSON.parse(localStorage.getItem(ORDER_KEY) || "{}");
-    state.orderPresets = savedOrder.orderPresets || {};
-    state.orderInputs = savedOrder.orderInputs || {};
+    if ((savedOrder.orderPresets && Object.keys(savedOrder.orderPresets).length) || (savedOrder.orderInputs && Object.keys(savedOrder.orderInputs).length)) {
+      state.orderPresets = savedOrder.orderPresets || {};
+      state.orderInputs = savedOrder.orderInputs || {};
+      loadedOrder = true;
+    }
   } catch (e) {}
+
+  if (!loadedOrder) {
+    try {
+      const legacyOrder = JSON.parse(localStorage.getItem(LEGACY_ORDER_KEY) || "{}");
+      state.orderPresets = migrateLegacyPresets(legacyOrder.presets || {});
+      Object.keys(state.orderPresets).forEach(productName => normalizePresets(productName));
+      state.orderInputs = migrateLegacyOrderInputs(legacyOrder.orderData || {}, state.orderPresets);
+      if (Object.keys(state.orderPresets).length || Object.keys(state.orderInputs).length) saveOrderData();
+    } catch (e) {}
+  }
 }
 
 function getResultOption(pid) {
