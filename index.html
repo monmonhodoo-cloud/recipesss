@@ -537,7 +537,7 @@ function renderProducts() {
   el.innerHTML = state.products.map(p => {
     const isEditing = editingProductId === p.id;
     const title = p.name.trim() || '?대쫫 ?녿뒗 ?쒗뭹';
-    const meta = `?먮즺 ${p.ingredients.length}媛?쨌 ?곸뼇??${p.supplements.length}媛?;
+    const meta = `원료 ${p.ingredients.length}개 · 영양제 ${p.supplements.length}개`;
     return `
     <div class="card ${isEditing ? 'editing' : 'collapsed'}" data-card="${p.id}">
       <div class="card-header">
@@ -823,7 +823,7 @@ function updateCard(pid) {
   if (supOnlyEl) opt.supplementOnly = supOnlyEl.checked;
   const { ratio, baseW, inputW, inputRaw, unitName, hasInput, unitDisp, uname } = getRatio(pid);
   const rb = document.getElementById('uratio-' + pid);
-  if (rb) rb.textContent = hasInput ? `횞 ${fmt(ratio)}` : '횞 ??;
+  if (rb) rb.textContent = hasInput ? `x ${fmt(ratio)}` : 'x -';
 
   const supOnly = document.getElementById('suponly-' + pid)?.checked || false;
   const allRows = [
