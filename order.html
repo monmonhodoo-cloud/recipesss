@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>영양제 발주서</title>
+<style>
+  :root {
+    --bg:#ffffff;--bg2:#f7f6f3;--bg3:#f0ede8;
+    --text:#1a1a18;--text2:#6b6b68;--text3:#9a9a96;
+    --border:rgba(0,0,0,0.1);--border2:rgba(0,0,0,0.18);
+    --accent:#1a1a18;--accent-text:#ffffff;
+    --success-bg:#e8f5ec;--success-text:#1a6e35;
+    --warn-bg:#fff8e1;--warn-text:#8a6000;
+    --radius:10px;--radius-lg:14px;
+  }
+  @media(prefers-color-scheme:dark){
+    :root{
+      --bg:#1c1c1a;--bg2:#252523;--bg3:#2e2e2b;
+      --text:#f0ede8;--text2:#a0a09c;--text3:#6a6a66;
+      --border:rgba(255,255,255,0.1);--border2:rgba(255,255,255,0.18);
+      --accent:#f0ede8;--accent-text:#1c1c1a;
+      --success-bg:#0a2e18;--success-text:#4acf7a;
+      --warn-bg:#2e2200;--warn-text:#f0c040;
+    }
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:'Apple SD Gothic Neo','Noto Sans KR',-apple-system,BlinkMacSystemFont,sans-serif;background:var(--bg3);color:var(--text);font-size:14px;min-height:100vh}
+  .app-header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
+  .app-title{font-size:15px;font-weight:600;letter-spacing:-.02em}
+  .app-sub{font-size:12px;color:var(--text2);margin-top:1px}
+  .header-btns{display:flex;gap:8px;align-items:center}
+  .btn{padding:7px 14px;border-radius:8px;font-size:13px;cursor:pointer;border:0.5px solid var(--border2);background:transparent;color:var(--text);font-family:inherit}
+  .btn:hover{background:var(--bg2)}
+  .btn-primary{background:var(--accent);color:var(--accent-text);border-color:var(--accent)}
+  .btn-primary:hover{opacity:.85}
+  .btn-sm{padding:5px 10px;font-size:12px}
+  .btn-danger{color:#c0392b;border-color:rgba(192,57,43,.3)}
+  .container{max-width:900px;margin:0 auto;padding:20px 16px 60px}
+  .tab-bar{display:flex;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:4px;margin-bottom:20px;gap:2px}
+  .tab{flex:1;padding:9px 12px;text-align:center;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-radius:8px;transition:all .15s;user-select:none}
+  .tab.active{background:var(--accent);color:var(--accent-text)}
+  .card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:14px}
+  .slabel{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:14px}
+  .slabel:first-child{margin-top:0}
+  table{width:100%;border-collapse:collapse}
+  th{font-size:11px;font-weight:600;color:var(--text3);text-align:left;padding:5px 8px;border-bottom:0.5px solid var(--border);letter-spacing:.03em}
+  td{padding:5px 8px;border-bottom:0.5px solid var(--border);vertical-align:middle;font-size:13px}
+  tr:last-child td{border-bottom:none}
+  td input[type="text"],td input[type="number"]{width:100%;background:transparent;border:none;font-size:13px;color:var(--text);outline:none;padding:3px 4px;border-radius:4px;font-family:inherit}
+  td input:focus{background:var(--bg2)}
+  td input[type="number"]{text-align:right}
+  td input[type="checkbox"]{width:15px;height:15px;cursor:pointer;accent-color:var(--accent)}
+  .add-row{display:inline-flex;align-items:center;gap:5px;font-size:12px;color:var(--text2);cursor:pointer;padding:6px 4px;border-radius:6px;margin-top:4px}
+  .add-row:hover{color:var(--text)}
+  .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-text);padding:10px 22px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;white-space:nowrap}
+  .toast.show{opacity:1}
+  .empty{color:var(--text3);font-size:13px;padding:24px;text-align:center}
+  .info-box{background:var(--warn-bg);color:var(--warn-text);border-radius:var(--radius);padding:10px 14px;font-size:12px;margin-bottom:14px;border:0.5px solid rgba(0,0,0,0.07)}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border2)}
+  .badge-eggshell{background:#fff3cd;color:#856404;border-color:rgba(133,100,4,.2)}
+  select{background:var(--bg2);border:0.5px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;padding:6px 10px;cursor:pointer;outline:none}
+  select:focus{border-color:var(--accent)}
+  .section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .paste-zone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:12px;margin-top:8px;font-size:12px;color:var(--text3);text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
+  .paste-zone:hover,.paste-zone.drag{border-color:var(--accent);background:var(--bg2);color:var(--text2)}
+  .preset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}
+  .preset-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+  .preset-card-name{font-size:13px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between}
+  .preset-weights{font-size:11px;color:var(--text2);line-height:1.6}
+
+  /* ── 발주 입력 탭 ── */
+  .order-product-row{background:var(--bg2);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;border:0.5px solid var(--border)}
+  .order-product-header{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+  .order-product-name{font-size:14px;font-weight:600}
+  .order-sup-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:6px}
+  .order-sup-item{display:flex;align-items:center;gap:6px;background:var(--bg);border:0.5px solid var(--border);border-radius:7px;padding:6px 8px}
+  .order-sup-label{font-size:12px;flex:1}
+  .order-sup-input{width:60px;text-align:right;background:transparent;border:none;font-size:13px;font-weight:600;color:var(--text);outline:none;font-family:inherit;padding:0}
+  .order-sup-input:focus{background:var(--bg2);border-radius:4px;padding:1px 4px}
+  .order-sup-unit{font-size:11px;color:var(--text3)}
+
+  /* ── 인쇄 스타일 ── */
+  @media print {
+    body{background:white;color:black;font-size:10pt}
+    .no-print{display:none!important}
+    .print-only{display:block!important}
+    .app-header,.tab-bar,.container > .card:not(.print-target){display:none}
+    .container{max-width:100%;padding:0;margin:0}
+    .print-wrapper{display:block!important;padding:8mm 10mm}
+    .print-section{page-break-after:always}
+    .print-section:last-child{page-break-after:avoid}
+  }
+  .print-wrapper{display:none}
+  .print-only{display:none}
+
+  /* ── 인쇄 미리보기 공통 ── */
+  .preview-box{background:white;color:#111;border:1px solid #ccc;border-radius:6px;padding:12px 14px;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif}
+  .preview-title{font-size:13px;font-weight:700;margin-bottom:8px;border-bottom:1.5px solid #111;padding-bottom:4px}
+  .preview-sub{font-size:10px;color:#555;margin-bottom:10px}
+  .pv-table{width:100%;border-collapse:collapse;font-size:10px}
+  .pv-table th{background:#f0f0f0;font-weight:700;padding:3px 5px;border:0.5px solid #bbb;text-align:center;font-size:9px}
+  .pv-table td{padding:3px 5px;border:0.5px solid #bbb;text-align:center;vertical-align:middle}
+  .pv-table td.left{text-align:left}
+  .pv-table tr:nth-child(even) td{background:#fafafa}
+  .eg-list{font-size:10px;line-height:1.9}
+  .eg-list span{display:inline-block;margin-right:12px}
+  .preview-section{margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<header class="app-header no-print">
+  <div>
+    <div class="app-title">영양제 발주서</div>
+    <div class="app-sub">레시피 원가 계산기와 localStorage 연동</div>
+  </div>
+  <div class="header-btns">
+    <button class="btn" onclick="location.href='index.html'">← 원가계산기</button>
+    <button class="btn btn-primary" onclick="window.print()">🖨 인쇄</button>
+  </div>
+</header>
+
+<div class="container">
+  <div class="tab-bar no-print" id="tabBar">
+    <div class="tab active" data-tab="preset">① 프리셋 관리</div>
+    <div class="tab" data-tab="order">② 발주 입력</div>
+    <div class="tab" data-tab="preview">③ 출력 미리보기</div>
+  </div>
+
+  <!-- ① 프리셋 관리 탭 -->
+  <div id="tab-preset">
+    <div class="info-box">
+      💡 엑셀에서 <b>제품명 탭 중량1 탭 중량2 탭 중량3...</b> 형식으로 복사 후 아래에 붙여넣기 하세요.<br>
+      예: <code>치킨&nbsp;&nbsp;20&nbsp;&nbsp;40&nbsp;&nbsp;60&nbsp;&nbsp;80&nbsp;&nbsp;100</code>
+    </div>
+
+    <div class="card">
+      <div class="section-row">
+        <div class="slabel" style="margin:0">제품 프리셋</div>
+        <div style="display:flex;gap:6px">
+          <button class="btn btn-sm" onclick="clearAllPresets()">전체 초기화</button>
+          <button class="btn btn-sm btn-primary" onclick="savePresets()">저장</button>
+        </div>
+      </div>
+
+      <div class="paste-zone" id="pasteZone" tabindex="0">
+        📋 여기 클릭 후 엑셀에서 Ctrl+V — 제품명↹중량1↹중량2... 형식
+      </div>
+
+      <div id="presetGrid" class="preset-grid" style="margin-top:12px"></div>
+    </div>
+
+    <div class="card">
+      <div class="slabel">영양제 치환명 (고정)</div>
+      <table>
+        <thead><tr><th>원래 이름</th><th>치환명</th><th>비고</th></tr></thead>
+        <tbody id="supMapTable"></tbody>
+      </table>
+      <div style="margin-top:10px">
+        <div class="slabel">제품 코드 (고정)</div>
+        <div style="font-size:12px;color:var(--text2);line-height:1.8" id="productCodeDesc"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 발주 입력 탭 -->
+  <div id="tab-order" style="display:none">
+    <div class="card">
+      <div class="section-row">
+        <div class="slabel" style="margin:0">부족한 영양제 입력</div>
+        <button class="btn btn-sm btn-primary" onclick="generatePreview()">→ 출력 미리보기 생성</button>
+      </div>
+      <div style="font-size:12px;color:var(--text2);margin-bottom:14px">
+        제품별로 부족한 영양제 수량을 입력하세요. 0이면 출력에서 제외됩니다.
+      </div>
+      <div id="orderArea"></div>
+      <div style="margin-top:12px;text-align:right">
+        <button class="btn btn-primary" onclick="generatePreview()">→ 출력 미리보기 생성</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 출력 미리보기 탭 -->
+  <div id="tab-preview" style="display:none">
+    <div class="card no-print" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between">
+        <div>
+          <div style="font-size:14px;font-weight:600">출력 미리보기</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">인쇄 버튼을 누르면 이 내용이 출력됩니다</div>
+        </div>
+        <button class="btn btn-primary" onclick="window.print()">🖨 인쇄</button>
+      </div>
+    </div>
+    <div id="previewArea"></div>
+  </div>
+</div>
+
+<!-- 실제 인쇄 영역 (화면에서 숨김, 인쇄시 표시) -->
+<div class="print-wrapper" id="printWrapper"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ──────────────────────────────────────────────
+// 고정 설정값
+// ──────────────────────────────────────────────
+
+// 영양제 치환명: 레시피에 입력된 영양제명 → 치환 코드
+const SUP_MAP = {
+  '멸치가루': '가',
+  '철':       '나',
+  '아연':     '다',
+  '구리':     '라',
+  '망간':     '마',
+  '비타민E':  '바',
+  '비타민D':  '사',
+  '차전차피': '아',
+  '소금':     '자',
+};
+
+// 난각분 영양제명 (이 이름은 별도 목록으로 분리됨)
+const EGGSHELL_NAME = '난각분';
+
+// 제품 코드: 제품명 → 코드 prefix
+// 치킨:A, 오리:B, ... 필요에 따라 추가
+const PRODUCT_CODE_PREFIX = {
+  '치킨': 'A',
+  // '오리': 'B',
+  // '연어': 'C',
+};
+
+// ──────────────────────────────────────────────
+// state
+// ──────────────────────────────────────────────
+let presets = {}; // { 제품명: [20, 40, 60, ...] }
+let orderData = {}; // { 제품명: { 중량: { 영양제명: 수량 } } }
+
+function uid() { return Math.random().toString(36).slice(2, 9); }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function showToast(msg) { const t=document.getElementById('toast'); t.textContent=msg; t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2500); }
+
+// ──────────────────────────────────────────────
+// localStorage 연동
+// ──────────────────────────────────────────────
+function loadFromStorage() {
+  // 원가계산기 데이터 (레시피 영양제 목록 참조용)
+  try {
+    const d = JSON.parse(localStorage.getItem('rcd6') || '{}');
+    window.recipeState = d;
+  } catch(e) { window.recipeState = {}; }
+
+  // 발주서 자체 데이터
+  try {
+    const d = JSON.parse(localStorage.getItem('order_data') || '{}');
+    presets = d.presets || {};
+    orderData = d.orderData || {};
+  } catch(e) {}
+}
+
+function savePresets() {
+  const d = JSON.parse(localStorage.getItem('order_data') || '{}');
+  d.presets = presets;
+  localStorage.setItem('order_data', JSON.stringify(d));
+  showToast('프리셋 저장 완료!');
+}
+
+function saveOrderData() {
+  const d = JSON.parse(localStorage.getItem('order_data') || '{}');
+  d.orderData = orderData;
+  localStorage.setItem('order_data', JSON.stringify(d));
+}
+
+// ──────────────────────────────────────────────
+// 탭 전환
+// ──────────────────────────────────────────────
+function switchTab(tab) {
+  ['preset','order','preview'].forEach(t => {
+    document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab===tab));
+  if (tab === 'order') renderOrderTab();
+  if (tab === 'preset') renderPresetGrid();
+}
+document.getElementById('tabBar').addEventListener('click', e => {
+  const t = e.target.dataset.tab;
+  if (t) switchTab(t);
+});
+
+// ──────────────────────────────────────────────
+// 프리셋 탭
+// ──────────────────────────────────────────────
+function renderPresetGrid() {
+  const grid = document.getElementById('presetGrid');
+  if (!Object.keys(presets).length) {
+    grid.innerHTML = '<div class="empty">프리셋이 없습니다. 위에 붙여넣기 하세요.</div>';
+    return;
+  }
+  grid.innerHTML = Object.entries(presets).map(([name, weights]) => {
+    const code = PRODUCT_CODE_PREFIX[name] || '?';
+    const weightTags = weights.map((w, i) => {
+      const wCode = code + i;
+      return `<span style="font-size:11px;background:var(--bg);border:0.5px solid var(--border2);border-radius:4px;padding:1px 6px;margin:1px;display:inline-block">${wCode}: ${w}g</span>`;
+    }).join('');
+    return `<div class="preset-card">
+      <div class="preset-card-name">
+        <span>${esc(name)}</span>
+        <button class="btn btn-sm btn-danger" onclick="deletePreset('${esc(name)}')">삭제</button>
+      </div>
+      <div>${weightTags}</div>
+    </div>`;
+  }).join('');
+}
+
+function renderSupMapTable() {
+  const tbody = document.getElementById('supMapTable');
+  tbody.innerHTML = Object.entries(SUP_MAP).map(([orig, code]) => {
+    const isEgg = orig === EGGSHELL_NAME;
+    return `<tr>
+      <td>${esc(orig)}</td>
+      <td style="font-weight:700">${esc(code)}</td>
+      <td>${isEgg ? '<span class="badge badge-eggshell">난각분 별도 출력</span>' : ''}</td>
+    </tr>`;
+  }).join('');
+
+  const desc = document.getElementById('productCodeDesc');
+  desc.innerHTML = Object.entries(PRODUCT_CODE_PREFIX).map(([name, code]) => {
+    const ws = presets[name] || [];
+    const examples = ws.slice(0,4).map((w,i) => `${code}${i}=${w}g`).join(', ');
+    return `<div style="margin-bottom:4px"><b>${name}</b> → ${code}_ &nbsp;<span style="color:var(--text3)">${examples}${ws.length>4?'..':''}</span></div>`;
+  }).join('') || '<span style="color:var(--text3)">코드 설정 없음</span>';
+}
+
+function clearAllPresets() {
+  if (!confirm('모든 프리셋을 삭제할까요?')) return;
+  presets = {};
+  renderPresetGrid();
+}
+
+function deletePreset(name) {
+  delete presets[name];
+  renderPresetGrid();
+}
+
+// 붙여넣기 파싱: 제품명\t중량1\t중량2...
+function parsePaste(text) {
+  const rows = text.trim().split(/\r?\n/);
+  const result = {};
+  rows.forEach(row => {
+    const cols = row.split('\t');
+    const name = (cols[0]||'').trim();
+    if (!name) return;
+    const weights = cols.slice(1).map(c => parseFloat(c.trim().replace(/,/g,''))).filter(n => !isNaN(n) && n > 0);
+    if (weights.length) result[name] = weights;
+  });
+  return result;
+}
+
+// paste zone
+const pasteZone = document.getElementById('pasteZone');
+pasteZone.addEventListener('click', () => pasteZone.focus());
+pasteZone.addEventListener('keydown', e => { if (e.key === 'Enter') pasteZone.focus(); });
+
+document.addEventListener('paste', e => {
+  // paste zone이 포커스이거나, 프리셋 탭이 활성인 경우
+  const activeTab = document.querySelector('.tab.active')?.dataset.tab;
+  if (activeTab !== 'preset') return;
+  const text = e.clipboardData.getData('text');
+  if (!text) return;
+  e.preventDefault();
+  const parsed = parsePaste(text);
+  if (!Object.keys(parsed).length) { showToast('파싱 실패. 형식: 제품명↹중량1↹중량2...'); return; }
+  Object.assign(presets, parsed);
+  renderPresetGrid();
+  showToast(`${Object.keys(parsed).length}개 제품 프리셋 추가`);
+});
+
+// ──────────────────────────────────────────────
+// 발주 입력 탭
+// ──────────────────────────────────────────────
+// 레시피에서 영양제 목록 가져오기
+function getRecipeSupplements() {
+  const sups = new Set();
+  (window.recipeState?.products || []).forEach(p => {
+    (p.supplements || []).forEach(r => { if (r.name?.trim()) sups.add(r.name.trim()); });
+  });
+  return Array.from(sups);
+}
+
+function renderOrderTab() {
+  const area = document.getElementById('orderArea');
+  const products = Object.keys(presets);
+  if (!products.length) {
+    area.innerHTML = '<div class="empty">프리셋을 먼저 등록하세요. (① 프리셋 관리 탭)</div>';
+    return;
+  }
+
+  const allSups = getRecipeSupplements();
+  if (!allSups.length) {
+    area.innerHTML = '<div class="empty" style="color:var(--warn-text)">레시피 원가계산기에 영양제가 등록되어 있지 않습니다.<br><a href="index.html" style="color:inherit">→ 원가계산기 바로가기</a></div>';
+    return;
+  }
+
+  // 난각분 제외한 영양제 (발주서용)
+  const nonEggSups = allSups.filter(s => s !== EGGSHELL_NAME);
+  const hasEgg = allSups.includes(EGGSHELL_NAME);
+
+  area.innerHTML = products.map(productName => {
+    const weights = presets[productName] || [];
+    const code = PRODUCT_CODE_PREFIX[productName] || '?';
+
+    return `<div class="order-product-row">
+      <div class="order-product-header">
+        <span class="order-product-name">${esc(productName)}</span>
+        <span class="badge">${code}_</span>
+        <span style="font-size:12px;color:var(--text3)">중량별 부족 수량 입력</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="min-width:500px">
+          <thead>
+            <tr>
+              <th style="width:100px">영양제</th>
+              ${weights.map((w,i) => `<th style="text-align:center;width:70px">${code}${i}<br><span style="font-weight:400;font-size:10px">${w}g</span></th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${nonEggSups.map(sup => {
+              const dispSup = SUP_MAP[sup] || sup;
+              return `<tr>
+                <td style="font-weight:500">${esc(dispSup)} <span style="font-size:10px;color:var(--text3)">(${esc(sup)})</span></td>
+                ${weights.map((w,i) => {
+                  const val = orderData[productName]?.[w]?.[sup] || '';
+                  return `<td><input type="number" min="0" step="1" placeholder="0"
+                    value="${val}"
+                    onchange="setOrderVal('${esc(productName)}',${w},'${esc(sup)}',this.value)"
+                    style="width:100%;text-align:center;background:transparent;border:none;font-size:13px;font-weight:600;color:var(--text);outline:none;font-family:inherit;padding:2px">
+                  </td>`;
+                }).join('')}
+              </tr>`;
+            }).join('')}
+            ${hasEgg ? `<tr style="background:var(--warn-bg)">
+              <td style="font-weight:600"><span class="badge badge-eggshell">난각분</span></td>
+              ${weights.map((w,i) => {
+                const val = orderData[productName]?.[w]?.['난각분'] || '';
+                return `<td><input type="number" min="0" step="1" placeholder="0"
+                  value="${val}"
+                  onchange="setOrderVal('${esc(productName)}',${w},'난각분',this.value)"
+                  style="width:100%;text-align:center;background:transparent;border:none;font-size:13px;font-weight:600;color:#856404;outline:none;font-family:inherit;padding:2px">
+                </td>`;
+              }).join('')}
+            </tr>` : ''}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function setOrderVal(productName, weight, supName, val) {
+  if (!orderData[productName]) orderData[productName] = {};
+  if (!orderData[productName][weight]) orderData[productName][weight] = {};
+  const n = parseInt(val) || 0;
+  if (n > 0) orderData[productName][weight][supName] = n;
+  else delete orderData[productName][weight][supName];
+  saveOrderData();
+}
+
+// ──────────────────────────────────────────────
+// 미리보기 & 인쇄 생성
+// ──────────────────────────────────────────────
+function generatePreview() {
+  saveOrderData();
+
+  // 입력된 발주 항목 수집
+  // orderData: { 제품명: { 중량: { 영양제명: 수량 } } }
+
+  // 난각분 목록 수집 (제품/영양제명 없이 중량 + 수량만)
+  const eggshellRows = []; // { weight, qty }
+  // 발주서 항목 수집
+  const orderRows = []; // { productName, weight, weightCode, supName, supCode, qty }
+
+  Object.entries(orderData).forEach(([productName, weightMap]) => {
+    const code = PRODUCT_CODE_PREFIX[productName] || '?';
+    const weights = presets[productName] || [];
+
+    Object.entries(weightMap).forEach(([weightStr, supMap]) => {
+      const weight = parseFloat(weightStr);
+      const wIdx = weights.indexOf(weight);
+      const wCode = wIdx >= 0 ? code + wIdx : code + '?';
+
+      Object.entries(supMap).forEach(([supName, qty]) => {
+        if (!qty || qty <= 0) return;
+        if (supName === EGGSHELL_NAME) {
+          eggshellRows.push({ weight, qty });
+        } else {
+          const supCode = SUP_MAP[supName] || supName;
+          orderRows.push({ productName, weight, weightCode: wCode, supName, supCode, qty });
+        }
+      });
+    });
+  });
+
+  // 빈 경우 체크
+  if (!eggshellRows.length && !orderRows.length) {
+    showToast('입력된 발주 수량이 없습니다.');
+    return;
+  }
+
+  // ── 미리보기 HTML 생성 ──
+  const today = new Date().toLocaleDateString('ko-KR');
+  let previewHtml = '';
+  let printHtml = '';
+
+  // 난각분 섹션
+  if (eggshellRows.length) {
+    // 중량 기준으로 합산
+    const eggMap = {};
+    eggshellRows.forEach(({ weight, qty }) => {
+      eggMap[weight] = (eggMap[weight] || 0) + qty;
+    });
+    const eggRows = Object.entries(eggMap).sort((a,b) => a[0]-b[0]);
+
+    const eggTableRows = eggRows.map(([w, q]) =>
+      `<tr><td class="left">난각분 ${w}g</td><td>${q}개</td></tr>`
+    ).join('');
+
+    const eggSection = `
+      <div class="preview-section">
+        <div class="preview-title">【 난각분 발주 목록 】</div>
+        <div class="preview-sub">${today} / 제품명 미표기</div>
+        <table class="pv-table">
+          <thead><tr><th class="left" style="width:60%">규격</th><th>수량</th></tr></thead>
+          <tbody>${eggTableRows}</tbody>
+        </table>
+      </div>`;
+
+    previewHtml += `<div class="preview-box" style="margin-bottom:16px">${eggSection}</div>`;
+    printHtml += eggSection;
+  }
+
+  // 발주서 섹션 (치환명)
+  if (orderRows.length) {
+    // 제품코드별로 그룹
+    const grouped = {};
+    orderRows.forEach(row => {
+      const key = row.weightCode;
+      if (!grouped[key]) grouped[key] = { weightCode: row.weightCode, productName: row.productName, weight: row.weight, sups: [] };
+      grouped[key].sups.push(row);
+    });
+
+    const orderTableRows = Object.values(grouped).sort((a,b) => a.weightCode.localeCompare(b.weightCode)).map(g => {
+      return g.sups.map((s, i) => `<tr>
+        ${i === 0 ? `<td rowspan="${g.sups.length}" style="font-weight:700;background:#f5f5f5">${esc(g.weightCode)}</td>` : ''}
+        <td>${esc(s.supCode)}</td>
+        <td>${s.qty}</td>
+      </tr>`).join('');
+    }).join('');
+
+    const orderSection = `
+      <div class="preview-section">
+        <div class="preview-title">【 영양제 발주서 】</div>
+        <div class="preview-sub">${today} / 제품 코드 및 영양제 치환명 사용</div>
+        <div class="preview-sub" style="margin-bottom:6px">
+          ${Object.entries(SUP_MAP).filter(([k]) => k !== EGGSHELL_NAME).map(([k,v]) => `${v}=${k}`).join('&nbsp;&nbsp;')}
+        </div>
+        <table class="pv-table">
+          <thead><tr><th style="width:80px">제품코드</th><th style="width:60px">영양제</th><th style="width:60px">수량</th></tr></thead>
+          <tbody>${orderTableRows}</tbody>
+        </table>
+      </div>`;
+
+    previewHtml += `<div class="preview-box">${orderSection}</div>`;
+    printHtml += orderSection;
+  }
+
+  document.getElementById('previewArea').innerHTML = previewHtml;
+  document.getElementById('printWrapper').innerHTML = `<div class="print-wrapper" style="display:block">${printHtml}</div>`;
+
+  switchTab('preview');
+}
+
+// ──────────────────────────────────────────────
+// 초기화
+// ──────────────────────────────────────────────
+loadFromStorage();
+renderPresetGrid();
+renderSupMapTable();
+</script>
+</body>
+</html>
