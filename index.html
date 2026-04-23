@@ -842,9 +842,9 @@ function updateCard(pid) {
       ? `<span class="tkind ${r.isUnit ? 'k-unit' : 'k-ing'}">${r.isUnit ? '?앹궛?⑥쐞' : '?먮즺'}</span>`
       : `<span class="tkind k-sup">?곸뼇??/span>`;
     const costCell = hasPrice
-      ? `<td class="cost">${Math.round(cost).toLocaleString()}??/td>`
-      : `<td class="cost-na">誘몄엯??/td>`;
-    // ?쒖떆 ?⑥쐞: ?덉떆???낅젰 ?⑥쐞 洹몃?濡?    const dispW = r.unit === 'kg' ? fmt(scaledW/1000)+'kg' : fmt(scaledW)+'g';
+      ? `<td class="cost">${Math.round(cost).toLocaleString()}원</td>`
+      : `<td class="cost-na">미입력</td>`;
+    const dispW = r.unit === 'kg' ? fmt(scaledW/1000) + 'kg' : fmt(scaledW) + 'g';
     return `<tr>
       <td>${esc(r.name)}${kindBadge}</td>
       <td class="wt">${dispW}</td>
@@ -854,13 +854,13 @@ function updateCard(pid) {
 
   document.getElementById('rbody-' + pid).innerHTML = `
     <table class="rt">
-      <thead><tr><th>?먮즺 / ?곸뼇??/th><th class="num">以묐웾</th><th class="num">?먭?</th></tr></thead>
+      <thead><tr><th>원료 / 영양제</th><th class="num">중량</th><th class="num">원가</th></tr></thead>
       <tbody>
-        ${rows || '<tr><td colspan="3" style="color:var(--text3);font-size:12px;padding:12px 6px">?낅젰???먮즺媛 ?놁뒿?덈떎.</td></tr>'}
+        ${rows || '<tr><td colspan="3" style="color:var(--text3);font-size:12px;padding:12px 6px">입력된 원료가 없습니다.</td></tr>'}
         <tr class="subtotal">
-          <td>?⑷퀎</td>
+          <td>합계</td>
           <td class="num">${fmt(totalW)}g</td>
-          <td class="num">${Math.round(totalC).toLocaleString()}??/td>
+          <td class="num">${Math.round(totalC).toLocaleString()}원</td>
         </tr>
       </tbody>
     </table>`;
@@ -869,13 +869,13 @@ function updateCard(pid) {
   const baseDisp = uname ? fmt(baseW/(unitDisp==='kg'?1000:1))+(unitDisp==='kg'?'kg':'g')+'/'+uname : (unitDisp==='kg' ? fmt(baseW/1000)+'kg' : fmt(baseW)+'g');
   const inDisp   = fmt(inputRaw) + dispUnit;
   const footDesc = hasInput
-    ? `${esc(unitName)} ${inDisp} ?낅젰 (湲곗? ${baseDisp} ??횞 ${fmt(ratio)})`
-    : unitName ? `${esc(unitName)} 以묐웾 ?낅젰 ?????덉떆??湲곗?` : '?덉떆??1諛곗튂 湲곗?';
+    ? `${esc(unitName)} ${inDisp} 입력 (기준 ${baseDisp} / x ${fmt(ratio)})`
+    : unitName ? `${esc(unitName)} 중량 입력 전 - 레시피 기준` : '레시피 1배치 기준';
 
   document.getElementById('rfoot-' + pid).innerHTML = `
     <div class="foot-desc">${footDesc}</div>
-    <div class="foot-item"><div class="foot-label">珥?以묐웾</div><div class="foot-val">${fmt(totalW)}g</div></div>
-    <div class="foot-item"><div class="foot-label">珥??먭?</div><div class="foot-val">${Math.round(totalC).toLocaleString()}??/div></div>`;
+    <div class="foot-item"><div class="foot-label">총 중량</div><div class="foot-val">${fmt(totalW)}g</div></div>
+    <div class="foot-item"><div class="foot-label">총 원가</div><div class="foot-val">${Math.round(totalC).toLocaleString()}원</div></div>`;
 
   updateGrand();
 }
@@ -1169,7 +1169,8 @@ function generatePreview() {
   document.getElementById('previewArea').innerHTML = previewHtml;
   document.getElementById('printWrapper').innerHTML = printHtml;
   switchTab('preview');
-}/* ?? 珥덇린???? */
+}
+/* 초기화 */
 loadData();
 loadOrderData();
 renderProducts();
