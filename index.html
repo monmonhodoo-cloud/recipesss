@@ -29,9 +29,11 @@
   .app-header{background:var(--bg);border-bottom:0.5px solid var(--border);padding:16px 24px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:100}
   .app-title{font-size:15px;font-weight:600;letter-spacing:-.02em}
   .app-sub{font-size:12px;color:var(--text2);margin-top:1px}
-  .header-btns{display:flex;gap:8px;align-items:center}
-  .save-btn{padding:7px 14px;background:var(--accent);color:var(--accent-text);border:none;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer}
-  .save-btn:hover{opacity:.85}
+  .header-btns{display:flex;gap:8px;align-items:center;flex-wrap:wrap;justify-content:flex-end}
+  .save-btn,.download-btn{padding:7px 14px;border-radius:8px;font-size:12px;font-weight:500;cursor:pointer;font-family:inherit}
+  .save-btn{background:var(--accent);color:var(--accent-text);border:none}
+  .download-btn{background:transparent;color:var(--text);border:0.5px solid var(--border2)}
+  .save-btn:hover,.download-btn:hover{opacity:.85}
   .container{max-width:860px;margin:0 auto;padding:20px 16px 60px}
   .tab-bar{display:flex;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:4px;margin-bottom:20px;gap:2px}
   .tab{flex:1;padding:9px 12px;text-align:center;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-radius:8px;transition:all .15s;user-select:none}
@@ -124,6 +126,7 @@
     <div class="app-sub">데이터는 브라우저에 자동 저장됩니다</div>
   </div>
   <div class="header-btns">
+    <button class="download-btn" onclick="downloadData()">⬇ 다운로드</button>
     <button class="save-btn" onclick="saveData()">💾 저장</button>
   </div>
 </header>
@@ -178,11 +181,34 @@ let state = { products: [], prices: {}, selectedProducts: [] };
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+function priceKey(s) { return String(s || '').trim(); }
 function fmt(n) { const v = Math.round(n * 100) / 100; return v % 1 === 0 ? v.toLocaleString() : v.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2}); }
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
 
 /* ── 저장/불러오기 ── */
 function saveData() { collectAllInputs(); localStorage.setItem('rcd6', JSON.stringify(state)); showToast('저장 완료!'); }
+function downloadData() {
+  collectAllInputs();
+  localStorage.setItem('rcd6', JSON.stringify(state));
+  const today = new Date().toISOString().slice(0, 10);
+  const payload = {
+    app: 'recipe-cost-calculator',
+    exportedAt: new Date().toISOString(),
+    products: state.products,
+    prices: state.prices,
+    selectedProducts: state.selectedProducts
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `recipe-cost-${today}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+  showToast('다운로드 완료!');
+}
 function loadData() {
   try {
     const d = JSON.parse(localStorage.getItem('rcd6') || '{}');
@@ -231,10 +257,15 @@ function collectAllInputs() {
 }
 function collectPrices() {
   document.querySelectorAll('#ingredientPriceTable tr[data-name], #supplementPriceTable tr[data-name]').forEach(tr => {
-    const nm = tr.dataset.name;
+    const nm = priceKey(tr.dataset.name);
+    if (!nm) return;
+    const unitValue = tr.querySelector('.unit-inp')?.value.trim() || '';
+    const priceValue = tr.querySelector('.price-inp')?.value.trim() || '';
+    const hasPrice = priceValue !== '';
     if (!state.prices[nm]) state.prices[nm] = {};
-    state.prices[nm].unit  = parseFloat(tr.querySelector('.unit-inp')?.value) || 0;
-    state.prices[nm].price = parseFloat(tr.querySelector('.price-inp')?.value) || 0;
+    state.prices[nm].unit  = parseFloat(unitValue) || (hasPrice ? 1000 : 0);
+    state.prices[nm].price = hasPrice ? (parseFloat(priceValue) || 0) : 0;
+    state.prices[nm].hasPrice = hasPrice;
   });
 }
 
@@ -434,8 +465,8 @@ document.addEventListener('paste', e => {
 function syncPriceTab() {
   const ing = new Set(), sup = new Set();
   state.products.forEach(p => {
-    p.ingredients.forEach(r => { if (r.name.trim()) ing.add(r.name.trim()); });
-    p.supplements.forEach(r => { if (r.name.trim()) sup.add(r.name.trim()); });
+    p.ingredients.forEach(r => { const nm = priceKey(r.name); if (nm) ing.add(nm); });
+    p.supplements.forEach(r => { const nm = priceKey(r.name); if (nm) sup.add(nm); });
   });
   const renderRows = (names, tbodyId, emptyId) => {
     const tbody = document.getElementById(tbodyId);
@@ -447,7 +478,7 @@ function syncPriceTab() {
       return `<tr data-name="${esc(nm)}">
         <td style="font-weight:500">${esc(nm)}</td>
         <td><input class="unit-inp" type="number" value="${ex.unit > 0 ? ex.unit : ''}" placeholder="1000" min="0" style="text-align:right"></td>
-        <td><input class="price-inp" type="number" value="${ex.price > 0 ? ex.price : ''}" placeholder="0" min="0" style="text-align:right"></td>
+        <td><input class="price-inp" type="number" value="${ex.hasPrice || ex.price > 0 ? ex.price : ''}" placeholder="0" min="0" style="text-align:right"></td>
       </tr>`;
     }).join('');
   };
@@ -594,8 +625,8 @@ function updateCard(pid) {
   let totalW = 0, totalC = 0;
   const rows = allRows.map(r => {
     const scaledW = r.weight * ratio;
-    const pd = state.prices[r.name] || {};
-    const hasPrice = pd.unit > 0 && pd.price > 0;
+    const pd = state.prices[priceKey(r.name)] || {};
+    const hasPrice = pd.unit > 0 && (pd.hasPrice || pd.price > 0);
     const cost = hasPrice ? (scaledW / pd.unit) * pd.price : 0;
     totalW += scaledW; totalC += cost;
     const kindBadge = r.kind === 'ing'
@@ -650,8 +681,8 @@ function updateGrand() {
     [...p.ingredients, ...p.supplements].forEach(r => {
       if (!r.name.trim() || r.weight <= 0) return;
       const sw = r.weight * ratio; gW += sw;
-      const pd = state.prices[r.name] || {};
-      if (pd.unit > 0 && pd.price > 0) gC += (sw / pd.unit) * pd.price;
+      const pd = state.prices[priceKey(r.name)] || {};
+      if (pd.unit > 0 && (pd.hasPrice || pd.price > 0)) gC += (sw / pd.unit) * pd.price;
     });
   });
   const el = document.getElementById('grand');
