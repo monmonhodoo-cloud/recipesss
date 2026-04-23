@@ -145,6 +145,40 @@
     .result-grid .foot-desc{flex-basis:100%}
     .result-grid .foot-val{font-size:16px}
   }
+
+  /* 발주 / 출력 통합 */
+  .result-actions{padding:0 18px 10px;display:flex;justify-content:flex-end}
+  .order-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px}
+  .section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap}
+  .preset-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:8px;margin-top:8px}
+  .preset-card{background:var(--bg2);border:0.5px solid var(--border);border-radius:var(--radius);padding:10px 12px}
+  .preset-card-name{font-size:13px;font-weight:600;margin-bottom:6px;display:flex;align-items:center;justify-content:space-between;gap:8px}
+  .preset-weights{font-size:11px;color:var(--text2);line-height:1.8}
+  .info-box{background:var(--info-bg);color:var(--info-text);border-radius:var(--radius);padding:10px 14px;font-size:12px;margin-bottom:14px;border:0.5px solid var(--border)}
+  .badge{display:inline-block;font-size:11px;padding:2px 8px;border-radius:10px;font-weight:600;background:var(--bg2);color:var(--text2);border:0.5px solid var(--border2)}
+  .badge-eggshell{background:#fff3cd;color:#856404;border-color:rgba(133,100,4,.2)}
+  .order-product-row{background:var(--bg2);border-radius:var(--radius);padding:12px 14px;margin-bottom:10px;border:0.5px solid var(--border)}
+  .order-product-header{display:flex;align-items:center;gap:10px;margin-bottom:10px;flex-wrap:wrap}
+  .order-product-name{font-size:14px;font-weight:600}
+  .preview-box{background:white;color:#111;border:1px solid #ccc;border-radius:6px;padding:12px 14px;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif}
+  .preview-title{font-size:13px;font-weight:700;margin-bottom:8px;border-bottom:1.5px solid #111;padding-bottom:4px}
+  .preview-sub{font-size:10px;color:#555;margin-bottom:10px}
+  .pv-table{width:100%;border-collapse:collapse;font-size:10px}
+  .pv-table th{background:#f0f0f0;font-weight:700;padding:3px 5px;border:0.5px solid #bbb;text-align:center;font-size:9px;color:#111}
+  .pv-table td{padding:3px 5px;border:0.5px solid #bbb;text-align:center;vertical-align:middle}
+  .pv-table td.left,.pv-table th.left{text-align:left}
+  .pv-table tr:nth-child(even) td{background:#fafafa}
+  .preview-section{margin-bottom:16px}
+  .print-wrapper{display:none}
+  details.order-details{margin-top:12px;color:var(--text2);font-size:12px}
+  details.order-details summary{cursor:pointer;color:var(--text);font-weight:600;margin-bottom:10px}
+  @media print {
+    body{background:white;color:black;font-size:10pt}
+    .app-header,.tab-bar,.container{display:none!important}
+    .print-wrapper{display:block!important;padding:8mm 10mm}
+    .print-section{page-break-after:always}
+    .print-section:last-child{page-break-after:avoid}
+  }
 </style>
 </head>
 <body>
@@ -162,9 +196,11 @@
 
 <div class="container">
   <div class="tab-bar" id="tabBar">
-    <div class="tab active" data-tab="recipe">① 레시피 입력</div>
-    <div class="tab" data-tab="price">② 단가 입력</div>
-    <div class="tab" data-tab="result">③ 결과 보기</div>
+    <div class="tab active" data-tab="recipe">레시피</div>
+    <div class="tab" data-tab="price">단가</div>
+    <div class="tab" data-tab="result">결과</div>
+    <div class="tab" data-tab="order">발주</div>
+    <div class="tab" data-tab="preview">출력</div>
   </div>
 
   <div id="tab-recipe">
@@ -194,20 +230,84 @@
     </div>
   </div>
 
-  <div id="tab-result" style="display:none">
+    <div id="tab-result" style="display:none">
     <div class="card">
       <div class="slabel" style="margin-top:0">제품 선택 <span style="font-size:11px;color:var(--text3);text-transform:none;font-weight:400;letter-spacing:0">(복수 선택 가능)</span></div>
       <div id="productChips"></div>
     </div>
     <div id="resultArea"></div>
   </div>
+
+  <div id="tab-order" style="display:none">
+    <div class="order-layout">
+      <div class="card">
+        <div class="section-row">
+          <div class="slabel" style="margin:0">발주 프리셋</div>
+          <div style="display:flex;gap:6px;flex-wrap:wrap">
+            <button class="btn" onclick="clearAllPresets()">전체 초기화</button>
+            <button class="btn btn-primary" onclick="saveOrderData()">저장</button>
+          </div>
+        </div>
+        <div class="info-box">결과 탭에서 제품 중량을 입력한 뒤 <b>발주 프리셋 저장</b>을 누르면 여기로 바로 들어옵니다. 엑셀에서 <code>제품명  중량1  중량2</code> 형식으로 붙여넣어도 됩니다.</div>
+        <div class="paste-zone" id="orderPasteZone" tabindex="0">여기를 클릭하고 엑셀 프리셋을 Ctrl+V로 붙여넣기</div>
+        <div id="presetGrid" class="preset-grid" style="margin-top:12px"></div>
+        <details class="order-details">
+          <summary>치환명 / 제품 코드 설정</summary>
+          <table>
+            <thead><tr><th>원래 이름</th><th>치환명</th><th>비고</th></tr></thead>
+            <tbody id="supMapTable"></tbody>
+          </table>
+          <div style="margin-top:10px" id="productCodeDesc"></div>
+        </details>
+      </div>
+
+      <div class="card">
+        <div class="section-row">
+          <div class="slabel" style="margin:0">부족한 영양제 입력</div>
+          <button class="btn btn-primary" onclick="generatePreview()">출력 미리보기 생성</button>
+        </div>
+        <div id="orderArea"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="tab-preview" style="display:none">
+    <div class="card" style="margin-bottom:14px">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
+        <div>
+          <div style="font-size:14px;font-weight:600">출력 미리보기</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">발주 탭에서 미리보기를 생성한 뒤 인쇄하세요.</div>
+        </div>
+        <button class="btn btn-primary" onclick="window.print()">인쇄</button>
+      </div>
+    </div>
+    <div id="previewArea"></div>
+  </div>
 </div>
+
+<div class="print-wrapper" id="printWrapper"></div>
 
 <div class="toast" id="toast"></div>
 
 <script>
 let state = { products: [], prices: {}, selectedProducts: [], resultOptions: {} };
 let editingProductId = null;
+let orderPresets = {};
+let orderData = {};
+
+const SUP_MAP = {
+  '멸치가루': '가',
+  '철': '철',
+  '아연': '아',
+  '구리': '구',
+  '망간': '망',
+  '비타민C': '비C',
+  '비타민D': '비D',
+  '차전자피': '차',
+  '소금': '소'
+};
+const EGGSHELL_NAME = '난각분';
+const PRODUCT_CODE_PREFIX = { '치킨': 'A' };
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -216,7 +316,8 @@ function fmt(n) { const v = Math.round(n * 100) / 100; return v % 1 === 0 ? v.to
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
 
 /* ── 저장/불러오기 ── */
-function saveData() { collectAllInputs(); localStorage.setItem('rcd6', JSON.stringify(state)); showToast('저장 완료!'); }
+function saveData() { collectAllInputs(); saveRecipeData(); saveOrderData(true); showToast('저장 완료!'); }
+function saveRecipeData() { localStorage.setItem('rcd6', JSON.stringify(state)); }
 function downloadData() {
   collectAllInputs();
   localStorage.setItem('rcd6', JSON.stringify(state));
@@ -567,12 +668,13 @@ function syncPriceTab() {
 /* ── 탭 전환 ── */
 function switchTab(tab) {
   collectAllInputs();
-  ['recipe', 'price', 'result'].forEach(t => {
+  ['recipe', 'price', 'result', 'order', 'preview'].forEach(t => {
     document.getElementById('tab-' + t).style.display = t === tab ? 'block' : 'none';
   });
   document.querySelectorAll('.tab').forEach(el => el.classList.toggle('active', el.dataset.tab === tab));
   if (tab === 'price') syncPriceTab();
   if (tab === 'result') renderResultTab();
+  if (tab === 'order') { renderPresetGrid(); renderOrderTab(); renderSupMapTable(); }
 }
 document.getElementById('tabBar').addEventListener('click', e => {
   const t = e.target.dataset.tab;
@@ -634,6 +736,7 @@ function buildResultCards() {
         <div class="rcard-name">${esc(p.name)}</div>
         ${unitCtrl}
       </div>
+      <div class="result-actions"><button class="btn btn-primary" onclick="saveResultPreset('${pid}')">발주 프리셋 저장</button></div>
       <div style="padding:6px 18px 0;display:flex;align-items:center;gap:6px">
         <input type="checkbox" id="suponly-${pid}" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent)" onchange="updateCard('${pid}')" ${opt.supplementOnly ? 'checked' : ''}>
         <label for="suponly-${pid}" style="font-size:12px;color:var(--text2);cursor:pointer;user-select:none">영양제만 보기</label>
@@ -780,13 +883,253 @@ function updateGrand() {
     </div>`;
 }
 
+
+/* ── 발주 통합 ── */
+function jsString(s) { return JSON.stringify(String(s || '')).replace(/</g, '\u003c'); }
+function orderWeightKey(w) { return String(Math.round((Number(w) || 0) * 100) / 100); }
+function fmtPresetWeight(w) {
+  const n = Number(w) || 0;
+  return n >= 1000 && n % 1000 === 0 ? fmt(n / 1000) + 'kg' : fmt(n) + 'g';
+}
+function getProductCode(productName) {
+  if (PRODUCT_CODE_PREFIX[productName]) return PRODUCT_CODE_PREFIX[productName];
+  const idx = state.products.findIndex(p => p.name.trim() === productName);
+  return idx >= 0 ? `P${idx + 1}-` : 'P-';
+}
+function loadOrderData() {
+  try {
+    const d = JSON.parse(localStorage.getItem('order_data') || '{}');
+    orderPresets = d.presets || {};
+    orderData = d.orderData || {};
+  } catch(e) { orderPresets = {}; orderData = {}; }
+}
+function saveOrderData(silent=false) {
+  localStorage.setItem('order_data', JSON.stringify({ presets: orderPresets, orderData }));
+  if (!silent) showToast('발주 데이터 저장 완료!');
+}
+function addOrderPreset(productName, grams) {
+  if (!productName || !grams || grams <= 0) return false;
+  if (!orderPresets[productName]) orderPresets[productName] = [];
+  const key = orderWeightKey(grams);
+  if (!orderPresets[productName].some(w => orderWeightKey(w) === key)) {
+    orderPresets[productName].push(Number(key));
+    orderPresets[productName].sort((a,b) => a-b);
+  }
+  return true;
+}
+function saveResultPreset(pid) {
+  updateCard(pid);
+  const p = state.products.find(x => x.id === pid);
+  if (!p || !p.name.trim()) { showToast('제품명이 필요합니다.'); return; }
+  const ratioInfo = getRatio(pid);
+  if (!ratioInfo.hasInput || !ratioInfo.inputW) { showToast('먼저 결과 중량을 입력하세요.'); return; }
+  addOrderPreset(p.name.trim(), ratioInfo.inputW);
+  saveOrderData(true);
+  renderPresetGrid();
+  renderOrderTab();
+  showToast(`${p.name.trim()} ${fmtPresetWeight(ratioInfo.inputW)} 프리셋 저장`);
+}
+function renderPresetGrid() {
+  const grid = document.getElementById('presetGrid');
+  if (!grid) return;
+  const entries = Object.entries(orderPresets);
+  if (!entries.length) {
+    grid.innerHTML = '<div class="empty">아직 프리셋이 없습니다. 결과 탭에서 저장하거나 위에 붙여넣기 하세요.</div>';
+    return;
+  }
+  grid.innerHTML = entries.map(([name, weights]) => {
+    const code = getProductCode(name);
+    const tags = (weights || []).map((w, i) => `<span style="font-size:11px;background:var(--bg);border:0.5px solid var(--border2);border-radius:4px;padding:1px 6px;margin:1px;display:inline-block">${code}${i}: ${fmtPresetWeight(w)}</span>`).join('');
+    return `<div class="preset-card">
+      <div class="preset-card-name"><span>${esc(name)}</span><button class="btn btn-danger" onclick="deletePreset(${jsString(name)})">삭제</button></div>
+      <div class="preset-weights">${tags}</div>
+    </div>`;
+  }).join('');
+  renderProductCodeDesc();
+}
+function renderSupMapTable() {
+  const tbody = document.getElementById('supMapTable');
+  if (!tbody) return;
+  tbody.innerHTML = Object.entries(SUP_MAP).map(([from, to]) => `<tr><td>${esc(from)}</td><td><span class="badge">${esc(to)}</span></td><td></td></tr>`).join('');
+  renderProductCodeDesc();
+}
+function renderProductCodeDesc() {
+  const desc = document.getElementById('productCodeDesc');
+  if (!desc) return;
+  const names = Object.keys(orderPresets);
+  desc.innerHTML = names.length ? names.map(name => {
+    const code = getProductCode(name);
+    const examples = (orderPresets[name] || []).slice(0,4).map((w,i) => `${code}${i}=${fmtPresetWeight(w)}`).join(', ');
+    return `<div style="margin-bottom:4px"><b>${esc(name)}</b> → ${esc(code)}_ <span style="color:var(--text3)">${examples}</span></div>`;
+  }).join('') : '<span style="color:var(--text3)">프리셋 저장 후 코드가 표시됩니다.</span>';
+}
+function clearAllPresets() {
+  if (!confirm('모든 발주 프리셋을 삭제할까요?')) return;
+  orderPresets = {};
+  orderData = {};
+  saveOrderData(true);
+  renderPresetGrid();
+  renderOrderTab();
+}
+function deletePreset(name) {
+  delete orderPresets[name];
+  delete orderData[name];
+  saveOrderData(true);
+  renderPresetGrid();
+  renderOrderTab();
+}
+function parseOrderPresetPaste(text) {
+  const parsed = {};
+  text.trim().split(/\r?\n/).forEach(line => {
+    const cols = line.split(/\t| {2,}/).map(s => s.trim()).filter(Boolean);
+    if (cols.length < 2) return;
+    const name = cols[0];
+    const weights = cols.slice(1).map(v => {
+      const raw = String(v).toLowerCase();
+      const n = parseFloat(raw.replace(/,/g, ''));
+      if (!n || n <= 0) return 0;
+      return raw.includes('kg') ? n * 1000 : n;
+    }).filter(Boolean);
+    if (name && weights.length) parsed[name] = Array.from(new Set(weights)).sort((a,b)=>a-b);
+  });
+  return parsed;
+}
+function getRecipeSupplements() {
+  const sups = new Set();
+  state.products.forEach(p => (p.supplements || []).forEach(r => { if (r.name && r.name.trim()) sups.add(r.name.trim()); }));
+  return Array.from(sups);
+}
+function renderOrderTab() {
+  const area = document.getElementById('orderArea');
+  if (!area) return;
+  const products = Object.keys(orderPresets);
+  if (!products.length) {
+    area.innerHTML = '<div class="empty">프리셋을 먼저 등록하세요. 결과 탭에서 중량 입력 후 저장하면 바로 들어옵니다.</div>';
+    return;
+  }
+  const allSups = getRecipeSupplements();
+  if (!allSups.length) {
+    area.innerHTML = '<div class="empty">레시피에 영양제가 등록되어 있지 않습니다.</div>';
+    return;
+  }
+  const nonEggSups = allSups.filter(s => s !== EGGSHELL_NAME);
+  const hasEgg = allSups.includes(EGGSHELL_NAME);
+  area.innerHTML = products.map(productName => {
+    const weights = orderPresets[productName] || [];
+    const code = getProductCode(productName);
+    return `<div class="order-product-row">
+      <div class="order-product-header">
+        <span class="order-product-name">${esc(productName)}</span>
+        <span class="badge">${esc(code)}_</span>
+        <span style="font-size:12px;color:var(--text3)">규격별 부족 수량 입력</span>
+      </div>
+      <div style="overflow-x:auto">
+        <table style="min-width:500px">
+          <thead><tr><th style="width:120px">영양제</th>${weights.map((w,i) => `<th style="text-align:center;width:80px">${esc(code)}${i}<br><span style="font-weight:400;font-size:10px">${fmtPresetWeight(w)}</span></th>`).join('')}</tr></thead>
+          <tbody>
+            ${nonEggSups.map(sup => `<tr>
+              <td style="font-weight:500">${esc(SUP_MAP[sup] || sup)} <span style="font-size:10px;color:var(--text3)">(${esc(sup)})</span></td>
+              ${weights.map(w => {
+                const key = orderWeightKey(w);
+                const val = orderData[productName]?.[key]?.[sup] || '';
+                return `<td><input type="number" min="0" step="1" placeholder="0" value="${esc(val)}" onchange="setOrderVal(${jsString(productName)},${Number(key)},${jsString(sup)},this.value)" style="width:100%;text-align:center;background:transparent;border:none;font-size:13px;font-weight:600;color:var(--text);outline:none;font-family:inherit;padding:2px"></td>`;
+              }).join('')}
+            </tr>`).join('')}
+            ${hasEgg ? `<tr style="background:#fff8e1">
+              <td style="font-weight:600"><span class="badge badge-eggshell">난각분</span></td>
+              ${weights.map(w => {
+                const key = orderWeightKey(w);
+                const val = orderData[productName]?.[key]?.[EGGSHELL_NAME] || '';
+                return `<td><input type="number" min="0" step="1" placeholder="0" value="${esc(val)}" onchange="setOrderVal(${jsString(productName)},${Number(key)},${jsString(EGGSHELL_NAME)},this.value)" style="width:100%;text-align:center;background:transparent;border:none;font-size:13px;font-weight:600;color:#856404;outline:none;font-family:inherit;padding:2px"></td>`;
+              }).join('')}
+            </tr>` : ''}
+          </tbody>
+        </table>
+      </div>
+    </div>`;
+  }).join('');
+}
+function setOrderVal(productName, weight, supName, val) {
+  const key = orderWeightKey(weight);
+  if (!orderData[productName]) orderData[productName] = {};
+  if (!orderData[productName][key]) orderData[productName][key] = {};
+  const n = parseInt(val, 10) || 0;
+  if (n > 0) orderData[productName][key][supName] = n;
+  else delete orderData[productName][key][supName];
+  saveOrderData(true);
+}
+function generatePreview() {
+  saveOrderData(true);
+  const eggshellRows = [];
+  const orderRows = [];
+  Object.entries(orderData).forEach(([productName, weightMap]) => {
+    const code = getProductCode(productName);
+    const weights = orderPresets[productName] || [];
+    Object.entries(weightMap).forEach(([weightStr, supMap]) => {
+      const weight = Number(weightStr);
+      const wIdx = weights.findIndex(w => orderWeightKey(w) === orderWeightKey(weight));
+      const weightCode = wIdx >= 0 ? code + wIdx : code + '?';
+      Object.entries(supMap).forEach(([supName, qty]) => {
+        if (!qty || qty <= 0) return;
+        if (supName === EGGSHELL_NAME) eggshellRows.push({ weight, qty });
+        else orderRows.push({ productName, weight, weightCode, supName, supCode: SUP_MAP[supName] || supName, qty });
+      });
+    });
+  });
+  if (!eggshellRows.length && !orderRows.length) { showToast('입력된 발주 수량이 없습니다.'); return; }
+  const today = new Date().toLocaleDateString('ko-KR');
+  let previewHtml = '';
+  let printHtml = '';
+  if (eggshellRows.length) {
+    const eggMap = {};
+    eggshellRows.forEach(({ weight, qty }) => { const k = orderWeightKey(weight); eggMap[k] = (eggMap[k] || 0) + Number(qty); });
+    const rows = Object.entries(eggMap).sort((a,b)=>Number(a[0])-Number(b[0])).map(([w,q]) => `<tr><td class="left">난각분 ${fmtPresetWeight(w)}</td><td>${q}개</td></tr>`).join('');
+    const section = `<div class="preview-section"><div class="preview-title">난각분 발주 목록</div><div class="preview-sub">${today}</div><table class="pv-table"><thead><tr><th class="left" style="width:60%">규격</th><th>수량</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    previewHtml += `<div class="preview-box" style="margin-bottom:16px">${section}</div>`;
+    printHtml += `<div class="print-section">${section}</div>`;
+  }
+  if (orderRows.length) {
+    const grouped = {};
+    orderRows.forEach(row => { if (!grouped[row.weightCode]) grouped[row.weightCode] = []; grouped[row.weightCode].push(row); });
+    const rows = Object.entries(grouped).sort().map(([code, rows]) => {
+      const first = rows[0];
+      const items = rows.map(r => `${esc(r.supCode)} ${r.qty}`).join(' / ');
+      return `<tr><td>${esc(code)}</td><td class="left">${esc(first.productName)} ${fmtPresetWeight(first.weight)}</td><td class="left">${items}</td></tr>`;
+    }).join('');
+    const section = `<div class="preview-section"><div class="preview-title">영양제 발주 목록</div><div class="preview-sub">${today}</div><table class="pv-table"><thead><tr><th style="width:18%">코드</th><th class="left" style="width:32%">제품/규격</th><th class="left">영양제/수량</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    previewHtml += `<div class="preview-box">${section}</div>`;
+    printHtml += `<div class="print-section">${section}</div>`;
+  }
+  document.getElementById('previewArea').innerHTML = previewHtml;
+  document.getElementById('printWrapper').innerHTML = printHtml;
+  switchTab('preview');
+}
+const orderPasteZone = document.getElementById('orderPasteZone');
+if (orderPasteZone) {
+  orderPasteZone.addEventListener('paste', e => {
+    const text = e.clipboardData.getData('text');
+    const parsed = parseOrderPresetPaste(text);
+    if (!Object.keys(parsed).length) { showToast('파싱 실패. 형식: 제품명, 중량1, 중량2'); return; }
+    e.preventDefault();
+    Object.entries(parsed).forEach(([name, weights]) => weights.forEach(w => addOrderPreset(name, w)));
+    saveOrderData(true);
+    renderPresetGrid();
+    renderOrderTab();
+    showToast(`${Object.keys(parsed).length}개 제품 프리셋 추가`);
+  });
+}
+
 /* ── 초기화 ── */
 loadData();
+loadOrderData();
 renderProducts();
 syncPriceTab();
+renderPresetGrid();
+renderSupMapTable();
 window.addEventListener('beforeunload', () => {
   collectAllInputs();
-  localStorage.setItem('rcd6', JSON.stringify(state));
+  saveRecipeData();
+  saveOrderData(true);
 });
 </script>
 </body>
