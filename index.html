@@ -40,6 +40,12 @@
   .tab.active{background:var(--accent);color:var(--accent-text)}
   .card{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:18px 20px;margin-bottom:14px}
   .card-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+  .card.collapsed{padding:14px 18px}
+  .card.collapsed .card-header{margin-bottom:0}
+  .product-summary{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+  .product-title{font-size:15px;font-weight:600;letter-spacing:-.02em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .product-meta{font-size:12px;color:var(--text2);white-space:nowrap}
+  .product-actions{display:flex;align-items:center;gap:8px;flex-shrink:0}
   .product-name-input{font-size:15px;font-weight:600;border:none;outline:none;background:transparent;color:var(--text);width:60%;letter-spacing:-.02em;font-family:inherit}
   .product-name-input::placeholder{color:var(--text3);font-weight:400}
   .slabel{font-size:11px;font-weight:600;color:var(--text3);text-transform:uppercase;letter-spacing:.06em;margin-bottom:8px;margin-top:14px}
@@ -194,6 +200,7 @@
 
 <script>
 let state = { products: [], prices: {}, selectedProducts: [], resultOptions: {} };
+let editingProductId = null;
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -349,6 +356,7 @@ function addProduct() {
   collectAllInputs();
   const newP = { id: uid(), name: '', ingredients: [], supplements: [] };
   state.products.push(newP);
+  editingProductId = newP.id;
   renderProducts();
   syncPriceTab();
   // 새로 추가된 제품명 input에 포커스
@@ -361,8 +369,14 @@ function addProduct() {
 function removeProduct(id) {
   collectAllInputs();
   state.products = state.products.filter(p => p.id !== id);
+  if (editingProductId === id) editingProductId = null;
   renderProducts();
   syncPriceTab();
+}
+function editProduct(id) {
+  collectAllInputs();
+  editingProductId = editingProductId === id ? null : id;
+  renderProducts();
 }
 function addIngredient(pid, type) {
   collectAllInputs();
@@ -395,13 +409,23 @@ function renderProducts() {
     el.innerHTML = '<div class="empty">제품을 추가해주세요.</div>';
     return;
   }
-  el.innerHTML = state.products.map(p => `
-    <div class="card">
+  el.innerHTML = state.products.map(p => {
+    const isEditing = editingProductId === p.id;
+    const title = p.name.trim() || '이름 없는 제품';
+    const meta = `원료 ${p.ingredients.length}개 · 영양제 ${p.supplements.length}개`;
+    return `
+    <div class="card ${isEditing ? '' : 'collapsed'}">
       <div class="card-header">
-        <input id="pname-${p.id}" class="product-name-input" value="${esc(p.name)}" placeholder="제품명 입력">
-        <button class="btn btn-danger" data-remove="${p.id}">삭제</button>
+        ${isEditing
+          ? `<input id="pname-${p.id}" class="product-name-input" value="${esc(p.name)}" placeholder="제품명 입력">`
+          : `<div class="product-summary"><div class="product-title">${esc(title)}</div><div class="product-meta">${esc(meta)}</div></div>`}
+        <div class="product-actions">
+          <button class="btn" data-edit="${p.id}">${isEditing ? '닫기' : '수정'}</button>
+          <button class="btn btn-danger" data-remove="${p.id}">삭제</button>
+        </div>
       </div>
 
+      ${isEditing ? `
       <div class="slabel" style="margin-top:0">원료</div>
       <table>
         <thead><tr>
@@ -463,13 +487,18 @@ function renderProducts() {
         <span class="add-row" data-addrow="${p.id}" data-rtype="sup">＋ 영양제 추가</span>
         <span class="paste-hint">📋 영양제 칸에 커서 두고 Ctrl+V — 영양제명↹무게 형식</span>
       </div>
-    </div>`).join('');
+      ` : ''}
+    </div>`;
+  }).join('');
 }
 
 /* ── 이벤트 위임 (레시피 탭) ── */
 document.getElementById('addProductBtn').addEventListener('click', addProduct);
 
 document.getElementById('productList').addEventListener('click', e => {
+  // 수정/닫기 버튼
+  const editBtn = e.target.closest('[data-edit]');
+  if (editBtn) { editProduct(editBtn.dataset.edit); return; }
   // 삭제 버튼
   const removeBtn = e.target.closest('[data-remove]');
   if (removeBtn) { removeProduct(removeBtn.dataset.remove); return; }
