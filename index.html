@@ -1,9 +1,9 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>레시피 원가 계산기</title>
+<title>?덉떆???먭? 怨꾩궛湲?/title>
 <style>
   :root {
     --bg:#ffffff;--bg2:#f7f6f3;--bg3:#f0ede8;
@@ -78,12 +78,12 @@
   .toast{position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--accent);color:var(--accent-text);padding:10px 22px;border-radius:20px;font-size:13px;font-weight:500;opacity:0;pointer-events:none;transition:opacity .3s;z-index:999;white-space:nowrap}
   .toast.show{opacity:1}
 
-  /* 엑셀 붙여넣기 힌트 */
+  /* ?묒? 遺숈뿬?ｊ린 ?뚰듃 */
   .paste-hint{font-size:11px;color:var(--text3);padding:4px 4px 0;display:flex;align-items:center;gap:4px}
   .paste-zone{border:1.5px dashed var(--border);border-radius:var(--radius);padding:10px 12px;margin-top:6px;font-size:12px;color:var(--text3);text-align:center;cursor:pointer;transition:border-color .15s,background .15s}
   .paste-zone:hover,.paste-zone.active{border-color:var(--accent);background:var(--bg2);color:var(--text2)}
 
-  /* 결과 카드 */
+  /* 寃곌낵 移대뱶 */
   .rcard{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden}
   .result-grid{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
   .result-grid .rcard{margin-bottom:0}
@@ -146,8 +146,10 @@
     .result-grid .foot-val{font-size:16px}
   }
 
-  /* 발주 / 출력 통합 */
-  .result-actions{padding:0 18px 10px;display:flex;justify-content:flex-end}
+  /* 諛쒖＜ / 異쒕젰 ?듯빀 */
+  .result-actions{padding:0 18px 10px;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+  .preset-name-input{min-width:220px;flex:1;max-width:360px;background:var(--bg2);border:0.5px solid var(--border2);border-radius:8px;color:var(--text);font-size:13px;font-family:inherit;padding:8px 10px;outline:none}
+  .preset-name-input:focus{border-color:var(--accent)}
   .order-layout{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;align-items:start}
   .order-sidebar,.order-main{min-width:0}
   .section-row{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:10px;flex-wrap:wrap}
@@ -165,6 +167,10 @@
   .order-table-wrap{overflow-x:auto;background:var(--bg);border:0.5px solid var(--border);border-radius:8px}
   .order-table-wrap table{min-width:560px}
   .order-table-wrap th,.order-table-wrap td{white-space:nowrap}
+  .order-cell{display:flex;flex-direction:column;gap:6px;align-items:center}
+  .order-cell-grams{font-size:12px;font-weight:600;color:var(--text)}
+  .order-cell-sub{font-size:10px;color:var(--text3)}
+  .order-cell-input{width:100%;text-align:center;background:var(--bg2);border:0.5px solid var(--border);font-size:12px;font-weight:600;color:var(--text);outline:none;font-family:inherit;padding:4px 6px;border-radius:6px}
   .preview-box{background:white;color:#111;border:1px solid #ccc;border-radius:6px;padding:12px 14px;font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif}
   .preview-title{font-size:13px;font-weight:700;margin-bottom:8px;border-bottom:1.5px solid #111;padding-bottom:4px}
   .preview-sub{font-size:10px;color:#555;margin-bottom:10px}
@@ -194,54 +200,54 @@
 
 <header class="app-header">
   <div>
-    <div class="app-title">레시피 원가 계산기</div>
-    <div class="app-sub">데이터는 브라우저에 자동 저장됩니다</div>
+    <div class="app-title">?덉떆???먭? 怨꾩궛湲?/div>
+    <div class="app-sub">?곗씠?곕뒗 釉뚮씪?곗????먮룞 ??λ맗?덈떎</div>
   </div>
   <div class="header-btns">
-    <button class="download-btn" onclick="downloadData()">⬇ 다운로드</button>
-    <button class="save-btn" onclick="saveData()">💾 저장</button>
+    <button class="download-btn" onclick="downloadData()">燧??ㅼ슫濡쒕뱶</button>
+    <button class="save-btn" onclick="saveData()">?뮶 ???/button>
   </div>
 </header>
 
 <div class="container">
   <div class="tab-bar" id="tabBar">
-    <div class="tab active" data-tab="recipe">레시피</div>
-    <div class="tab" data-tab="price">단가</div>
-    <div class="tab" data-tab="result">결과</div>
-    <div class="tab" data-tab="order">발주</div>
-    <div class="tab" data-tab="preview">출력</div>
+    <div class="tab active" data-tab="recipe">?덉떆??/div>
+    <div class="tab" data-tab="price">?④?</div>
+    <div class="tab" data-tab="result">寃곌낵</div>
+    <div class="tab" data-tab="order">諛쒖＜</div>
+    <div class="tab" data-tab="preview">異쒕젰</div>
   </div>
 
   <div id="tab-recipe">
     <div class="top-bar">
-      <span class="count-badge">제품 <span id="productCount">0</span>개</span>
-      <button class="btn btn-primary" id="addProductBtn">＋ 제품 추가</button>
+      <span class="count-badge">?쒗뭹 <span id="productCount">0</span>媛?/span>
+      <button class="btn btn-primary" id="addProductBtn">竊??쒗뭹 異붽?</button>
     </div>
     <div id="productList"></div>
   </div>
 
   <div id="tab-price" style="display:none">
     <div class="card">
-      <div class="slabel" style="margin-top:0">원료 단가</div>
+      <div class="slabel" style="margin-top:0">?먮즺 ?④?</div>
       <table>
-        <thead><tr><th>원료명</th><th style="text-align:right">단위 (g)</th><th style="text-align:right">단가 (원)</th></tr></thead>
+        <thead><tr><th>?먮즺紐?/th><th style="text-align:right">?⑥쐞 (g)</th><th style="text-align:right">?④? (??</th></tr></thead>
         <tbody id="ingredientPriceTable"></tbody>
       </table>
-      <div id="ingredientPriceEmpty" class="empty" style="padding:16px">레시피 탭에서 원료를 먼저 입력해주세요.</div>
+      <div id="ingredientPriceEmpty" class="empty" style="padding:16px">?덉떆????뿉???먮즺瑜?癒쇱? ?낅젰?댁＜?몄슂.</div>
     </div>
     <div class="card">
-      <div class="slabel" style="margin-top:0">영양제 단가</div>
+      <div class="slabel" style="margin-top:0">?곸뼇???④?</div>
       <table>
-        <thead><tr><th>영양제명</th><th style="text-align:right">단위 (g)</th><th style="text-align:right">단가 (원)</th></tr></thead>
+        <thead><tr><th>?곸뼇?쒕챸</th><th style="text-align:right">?⑥쐞 (g)</th><th style="text-align:right">?④? (??</th></tr></thead>
         <tbody id="supplementPriceTable"></tbody>
       </table>
-      <div id="supplementPriceEmpty" class="empty" style="padding:16px">레시피 탭에서 영양제를 먼저 입력해주세요.</div>
+      <div id="supplementPriceEmpty" class="empty" style="padding:16px">?덉떆????뿉???곸뼇?쒕? 癒쇱? ?낅젰?댁＜?몄슂.</div>
     </div>
   </div>
 
     <div id="tab-result" style="display:none">
     <div class="card">
-      <div class="slabel" style="margin-top:0">제품 선택 <span style="font-size:11px;color:var(--text3);text-transform:none;font-weight:400;letter-spacing:0">(복수 선택 가능)</span></div>
+      <div class="slabel" style="margin-top:0">?쒗뭹 ?좏깮 <span style="font-size:11px;color:var(--text3);text-transform:none;font-weight:400;letter-spacing:0">(蹂듭닔 ?좏깮 媛??</span></div>
       <div id="productChips"></div>
     </div>
     <div id="resultArea"></div>
@@ -251,19 +257,18 @@
     <div class="order-layout">
       <div class="card order-sidebar">
         <div class="section-row">
-          <div class="slabel" style="margin:0">발주 프리셋</div>
+          <div class="slabel" style="margin:0">諛쒖＜ ?꾨━??/div>
           <div style="display:flex;gap:6px;flex-wrap:wrap">
-            <button class="btn" onclick="clearAllPresets()">전체 초기화</button>
-            <button class="btn btn-primary" onclick="saveOrderData()">저장</button>
+            <button class="btn" onclick="clearAllPresets()">?꾩껜 珥덇린??/button>
+            <button class="btn btn-primary" onclick="saveOrderData()">???/button>
           </div>
         </div>
-        <div class="info-box">결과 탭에서 중량을 입력한 뒤 <b>발주 프리셋 저장</b>을 누르면 규격 코드와 함께 저장됩니다. 엑셀에서 <code>제품명  중량1  중량2</code> 형식으로 붙여넣어도 됩니다.</div>
-        <div class="paste-zone" id="orderPasteZone" tabindex="0">여기를 클릭하고 엑셀 프리셋을 Ctrl+V로 붙여넣기</div>
+        <div class="info-box">寃곌낵 ??뿉???쒗뭹 以묐웾怨??꾨━?뗫챸??吏?뺥븳 ??<b>諛쒖＜ ?꾨━?????/b>???꾨Ⅴ硫??ш린濡?諛붾줈 ?ㅼ뼱?듬땲??</div>
         <div id="presetGrid" class="preset-grid" style="margin-top:12px"></div>
         <details class="order-details">
-          <summary>치환명 / 제품 코드 설정</summary>
+          <summary>?곸뼇??移섑솚紐?/ ?꾨━??肄붾뱶</summary>
           <table>
-            <thead><tr><th>원래 이름</th><th>치환명</th><th>비고</th></tr></thead>
+            <thead><tr><th>?먮옒 ?대쫫</th><th>移섑솚紐?/th><th>鍮꾧퀬</th></tr></thead>
             <tbody id="supMapTable"></tbody>
           </table>
           <div style="margin-top:10px" id="productCodeDesc"></div>
@@ -272,8 +277,8 @@
 
       <div class="card order-main">
         <div class="section-row">
-          <div class="slabel" style="margin:0">부족한 영양제 입력</div>
-          <button class="btn btn-primary" onclick="generatePreview()">출력 미리보기 생성</button>
+          <div class="slabel" style="margin:0">遺議깊븳 ?곸뼇???낅젰</div>
+          <button class="btn btn-primary" onclick="generatePreview()">異쒕젰 誘몃━蹂닿린 ?앹꽦</button>
         </div>
         <div id="orderArea"></div>
       </div>
@@ -282,10 +287,10 @@
     <div class="card" style="margin-bottom:14px">
       <div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">
         <div>
-          <div style="font-size:14px;font-weight:600">출력 미리보기</div>
-          <div style="font-size:12px;color:var(--text2);margin-top:2px">발주 탭에서 미리보기를 생성한 뒤 인쇄하세요.</div>
+          <div style="font-size:14px;font-weight:600">異쒕젰 誘몃━蹂닿린</div>
+          <div style="font-size:12px;color:var(--text2);margin-top:2px">諛쒖＜ ??뿉??誘몃━蹂닿린瑜??앹꽦?????몄뇙?섏꽭??</div>
         </div>
-        <button class="btn btn-primary" onclick="window.print()">인쇄</button>
+        <button class="btn btn-primary" onclick="window.print()">?몄뇙</button>
       </div>
     </div>
     <div id="previewArea"></div>
@@ -303,18 +308,18 @@ let orderPresets = {};
 let orderData = {};
 
 const SUP_MAP = {
-  '멸치가루': '가',
-  '철': '철',
-  '아연': '아',
-  '구리': '구',
-  '망간': '망',
-  '비타민C': '비C',
-  '비타민D': '비D',
-  '차전자피': '차',
-  '소금': '소'
+  '硫몄튂媛猷?: '媛',
+  '泥?: '泥?,
+  '?꾩뿰': '??,
+  '援щ━': '援?,
+  '留앷컙': '留?,
+  '鍮꾪?誘퍬': '鍮껩',
+  '鍮꾪?誘퍭': '鍮껪',
+  '李⑥쟾?먰뵾': '李?,
+  '?뚭툑': '??
 };
-const EGGSHELL_NAME = '난각분';
-const PRODUCT_CODE_PREFIX = { '치킨': 'A' };
+const EGGSHELL_NAME = '?쒓컖遺?;
+const PRODUCT_CODE_PREFIX = { '移섑궓': 'A' };
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -322,8 +327,8 @@ function priceKey(s) { return String(s || '').trim(); }
 function fmt(n) { const v = Math.round(n * 100) / 100; return v % 1 === 0 ? v.toLocaleString() : v.toLocaleString(undefined, {minimumFractionDigits:0, maximumFractionDigits:2}); }
 function showToast(msg) { const t = document.getElementById('toast'); t.textContent = msg; t.classList.add('show'); setTimeout(() => t.classList.remove('show'), 2500); }
 
-/* ── 저장/불러오기 ── */
-function saveData() { collectAllInputs(); saveRecipeData(); saveOrderData(true); showToast('저장 완료!'); }
+/* ?? ???遺덈윭?ㅺ린 ?? */
+function saveData() { collectAllInputs(); saveRecipeData(); saveOrderData(true); showToast('????꾨즺!'); }
 function saveRecipeData() { localStorage.setItem('rcd6', JSON.stringify(state)); }
 function downloadData() {
   collectAllInputs();
@@ -346,7 +351,7 @@ function downloadData() {
   a.click();
   a.remove();
   URL.revokeObjectURL(url);
-  showToast('다운로드 완료!');
+  showToast('?ㅼ슫濡쒕뱶 ?꾨즺!');
 }
 function loadData() {
   try {
@@ -358,7 +363,7 @@ function loadData() {
   } catch(e) {}
 }
 
-/* ── 입력값 수집 ── */
+/* ?? ?낅젰媛??섏쭛 ?? */
 function collectAllInputs() {
   state.products.forEach(p => {
     const el = document.getElementById('pname-' + p.id);
@@ -382,9 +387,11 @@ function collectAllInputs() {
     });
     p.supplements.forEach(r => {
       const nm = document.getElementById('sup-name-' + r.id);
+      const alias = document.getElementById('sup-alias-' + r.id);
       const wt = document.getElementById('sup-wt-' + r.id);
       const un = document.getElementById('sup-un-' + r.id);
       if (nm) r.name = nm.value;
+      if (alias) r.alias = alias.value.trim();
       if (un) r.unit = un.value;
       if (wt) {
         const raw = parseFloat(wt.value) || 0;
@@ -399,7 +406,7 @@ function collectAllInputs() {
 
 function getResultOption(pid) {
   if (!state.resultOptions) state.resultOptions = {};
-  if (!state.resultOptions[pid]) state.resultOptions[pid] = { unitId: '', weight: '', supplementOnly: false };
+  if (!state.resultOptions[pid]) state.resultOptions[pid] = { unitId: '', weight: '', supplementOnly: false, presetLabel: '' };
   return state.resultOptions[pid];
 }
 
@@ -410,9 +417,11 @@ function collectResultInputs() {
     const sel = document.getElementById('usel-' + pid);
     const wt = document.getElementById('uwt-' + pid);
     const supOnly = document.getElementById('suponly-' + pid);
+    const presetLabel = document.getElementById('preset-label-' + pid);
     if (sel) opt.unitId = sel.value;
     if (wt) opt.weight = wt.value;
     if (supOnly) opt.supplementOnly = supOnly.checked;
+    if (presetLabel) opt.presetLabel = presetLabel.value.trim();
   });
 }
 function collectPrices() {
@@ -429,9 +438,9 @@ function collectPrices() {
   });
 }
 
-/* ── 엑셀 붙여넣기 파싱 ──
-   형식: 원료명\t무게\t생산단위 (3컬럼)
-   생산단위 컬럼: 1, y, o, ★, v, ✓ 등이면 체크
+/* ?? ?묒? 遺숈뿬?ｊ린 ?뚯떛 ??
+   ?뺤떇: ?먮즺紐?t臾닿쾶\t?앹궛?⑥쐞 (3而щ읆)
+   ?앹궛?⑥쐞 而щ읆: 1, y, o, ?? v, ???깆씠硫?泥댄겕
 */
 function parseExcelPaste(text) {
   const rows = text.trim().split(/\r?\n/).map(row => row.split('\t'));
@@ -440,7 +449,7 @@ function parseExcelPaste(text) {
     const name    = (cols[0] || '').trim();
     const weight  = parseFloat((cols[1] || '').trim().replace(/,/g, ''));
     const unitRaw = (cols[2] || '').trim().toLowerCase();
-    const isUnit  = ['1','y','yes','true','o','★','v','✓','체크'].includes(unitRaw);
+    const isUnit  = ['1','y','yes','true','o','??,'v','??,'泥댄겕'].includes(unitRaw);
     if (name && !isNaN(weight) && weight > 0) {
       result.push({ name, weight, isUnit });
     }
@@ -450,23 +459,23 @@ function parseExcelPaste(text) {
 
 function applyPaste(pid, type, text) {
   const parsed = parseExcelPaste(text);
-  if (!parsed.length) { showToast('붙여넣을 데이터 없음. 형식: 원료명↹무게↹생산단위(1 또는 빈칸)'); return; }
+  if (!parsed.length) { showToast('遺숈뿬?ｌ쓣 ?곗씠???놁쓬. ?뺤떇: ?먮즺紐끸넿臾닿쾶?뱀깮?곕떒??1 ?먮뒗 鍮덉뭏)'); return; }
   collectAllInputs();
   const p = state.products.find(p => p.id === pid);
   if (!p) return;
   const arr = type === 'ing' ? p.ingredients : p.supplements;
   const filtered = arr.filter(r => r.name.trim() || r.weight > 0);
   parsed.forEach(item => {
-    filtered.push({ id: uid(), name: item.name, weight: item.weight, unit: 'g', isUnit: type === 'ing' ? item.isUnit : false });
+    filtered.push({ id: uid(), name: item.name, alias: '', weight: item.weight, unit: 'g', isUnit: type === 'ing' ? item.isUnit : false });
   });
   if (type === 'ing') p.ingredients = filtered;
   else p.supplements = filtered;
   renderProducts();
   syncPriceTab();
-  showToast(`${parsed.length}개 행 붙여넣기 완료`);
+  showToast(`${parsed.length}媛???遺숈뿬?ｊ린 ?꾨즺`);
 }
 
-/* ── 레시피 탭 ── */
+/* ?? ?덉떆?????? */
 function addProduct() {
   collectAllInputs();
   const newP = { id: uid(), name: '', ingredients: [], supplements: [] };
@@ -474,8 +483,7 @@ function addProduct() {
   editingProductId = newP.id;
   renderProducts();
   syncPriceTab();
-  // 새로 추가된 제품명 input에 포커스
-  setTimeout(() => {
+  // ?덈줈 異붽????쒗뭹紐?input???ъ빱??  setTimeout(() => {
     const el = document.getElementById('pname-' + newP.id);
     if (el) el.focus();
   }, 50);
@@ -497,7 +505,7 @@ function addIngredient(pid, type) {
   collectAllInputs();
   const p = state.products.find(p => p.id === pid);
   if (!p) return;
-  const newR = { id: uid(), name: '', weight: 0, unit: 'g', isUnit: false, unitName: '' };
+  const newR = { id: uid(), name: '', alias: '', weight: 0, unit: 'g', isUnit: false, unitName: '' };
   (type === 'ing' ? p.ingredients : p.supplements).push(newR);
   renderProducts();
   syncPriceTab();
@@ -522,41 +530,42 @@ function renderProducts() {
   const el = document.getElementById('productList');
   if (!state.products.length) {
     el.className = '';
-    el.innerHTML = '<div class="empty">제품을 추가해주세요.</div>';
+    el.innerHTML = '<div class="empty">?쒗뭹??異붽??댁＜?몄슂.</div>';
     return;
   }
   el.className = 'product-list';
   el.innerHTML = state.products.map(p => {
     const isEditing = editingProductId === p.id;
-    const title = p.name.trim() || '이름 없는 제품';
-    const meta = `원료 ${p.ingredients.length}개 · 영양제 ${p.supplements.length}개`;
+    const title = p.name.trim() || '?대쫫 ?녿뒗 ?쒗뭹';
+    const meta = `?먮즺 ${p.ingredients.length}媛?쨌 ?곸뼇??${p.supplements.length}媛?;
     return `
     <div class="card ${isEditing ? 'editing' : 'collapsed'}" data-card="${p.id}">
       <div class="card-header">
         ${isEditing
-          ? `<input id="pname-${p.id}" class="product-name-input" value="${esc(p.name)}" placeholder="제품명 입력">`
+          ? `<input id="pname-${p.id}" class="product-name-input" value="${esc(p.name)}" placeholder="?쒗뭹紐??낅젰">`
           : `<div class="product-summary"><div class="product-title">${esc(title)}</div><div class="product-meta">${esc(meta)}</div></div>`}
         <div class="product-actions">
-          <button class="btn" data-edit="${p.id}">${isEditing ? '닫기' : '수정'}</button>
-          <button class="btn btn-danger" data-remove="${p.id}">삭제</button>
+          <button class="btn" data-edit="${p.id}">${isEditing ? '?リ린' : '?섏젙'}</button>
+          <button class="btn btn-danger" data-remove="${p.id}">??젣</button>
         </div>
       </div>
 
       ${isEditing ? `
-      <div class="slabel" style="margin-top:0">원료</div>
+      <div class="slabel" style="margin-top:0">?먮즺</div>
       <table>
         <thead><tr>
-          <th>원료명</th>
-          <th style="text-align:right;width:138px">레시피 무게</th>
-          <th style="text-align:center;width:64px">생산단위</th>
-          <th style="width:100px;font-size:11px;color:var(--text3)">단위명 <span style="font-weight:400">(생산단위용)</span></th>
+          <th>?먮즺紐?/th>
+          <th style="width:160px">치환명</th>
+          <th style="text-align:right;width:138px">?덉떆??臾닿쾶</th>
+          <th style="text-align:center;width:64px">?앹궛?⑥쐞</th>
+          <th style="width:100px;font-size:11px;color:var(--text3)">?⑥쐞紐?<span style="font-weight:400">(?앹궛?⑥쐞??</span></th>
           <th style="width:28px"></th>
         </tr></thead>
         <tbody id="ing-tbody-${p.id}">
         ${p.ingredients.map(r => {
           const dispW = r.unit === 'kg' ? (r.weight / 1000) : r.weight;
           return `<tr>
-          <td><input type="text" id="ing-name-${r.id}" value="${esc(r.name)}" placeholder="원료명"></td>
+          <td><input type="text" id="ing-name-${r.id}" value="${esc(r.name)}" placeholder="?먮즺紐?></td>
           <td style="display:flex;align-items:center;gap:3px;justify-content:flex-end">
             <input type="number" id="ing-wt-${r.id}" value="${dispW || ''}" placeholder="0" min="0" step="any" style="width:80px;text-align:right">
             <select id="ing-un-${r.id}" class="unit-sel" style="width:48px;font-size:12px;padding:2px 2px;background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer">
@@ -566,29 +575,31 @@ function renderProducts() {
           </td>
           <td style="text-align:center"><input type="checkbox" id="ing-ck-${r.id}" ${r.isUnit ? 'checked' : ''}></td>
           <td style="min-width:70px">
-            ${r.isUnit ? `<input type="text" id="ing-uname-${r.id}" value="${esc(r.unitName||'')}" placeholder="단위명(마리,개..)" style="width:90px;font-size:12px;color:var(--text2);background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 5px">` : ''}
+            ${r.isUnit ? `<input type="text" id="ing-uname-${r.id}" value="${esc(r.unitName||'')}" placeholder="?⑥쐞紐?留덈━,媛?.)" style="width:90px;font-size:12px;color:var(--text2);background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;padding:2px 5px">` : ''}
           </td>
-          <td><span class="del-row" data-pid="${p.id}" data-type="ing" data-rid="${r.id}" style="cursor:pointer;color:var(--text3);font-size:16px">×</span></td>
+          <td><span class="del-row" data-pid="${p.id}" data-type="ing" data-rid="${r.id}" style="cursor:pointer;color:var(--text3);font-size:16px">횞</span></td>
         </tr>`;}).join('')}
         </tbody>
       </table>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="add-row" data-addrow="${p.id}" data-rtype="ing">＋ 원료 추가</span>
-        <span class="paste-hint">📋 원료 칸에 커서 두고 Ctrl+V — 원료명↹무게↹생산단위(1) 형식</span>
+        <span class="add-row" data-addrow="${p.id}" data-rtype="ing">竊??먮즺 異붽?</span>
+        <span class="paste-hint">?뱥 ?먮즺 移몄뿉 而ㅼ꽌 ?먭퀬 Ctrl+V ???먮즺紐끸넿臾닿쾶?뱀깮?곕떒??1) ?뺤떇</span>
       </div>
 
-      <div class="slabel">영양제</div>
+      <div class="slabel">?곸뼇??/div>
       <table>
         <thead><tr>
-          <th>영양제명</th>
-          <th style="text-align:right;width:138px">레시피 무게</th>
+          <th>?곸뼇?쒕챸</th>
+          <th style="width:160px">치환명</th>
+          <th style="text-align:right;width:138px">?덉떆??臾닿쾶</th>
           <th style="width:28px"></th>
         </tr></thead>
         <tbody id="sup-tbody-${p.id}">
         ${p.supplements.map(r => {
           const dispW = r.unit === 'kg' ? (r.weight / 1000) : r.weight;
           return `<tr>
-          <td><input type="text" id="sup-name-${r.id}" value="${esc(r.name)}" placeholder="영양제명"></td>
+          <td><input type="text" id="sup-name-${r.id}" value="${esc(r.name)}" placeholder="?곸뼇?쒕챸"></td>
+          <td><input type="text" id="sup-alias-${r.id}" value="${esc(r.alias || '')}" placeholder="출력명"></td>
           <td style="display:flex;align-items:center;gap:3px;justify-content:flex-end">
             <input type="number" id="sup-wt-${r.id}" value="${dispW || ''}" placeholder="0" min="0" step="any" style="width:80px;text-align:right">
             <select id="sup-un-${r.id}" class="unit-sel" style="width:48px;font-size:12px;padding:2px 2px;background:var(--bg2);border:0.5px solid var(--border);border-radius:5px;color:var(--text);cursor:pointer">
@@ -596,58 +607,58 @@ function renderProducts() {
               <option value="kg" ${r.unit==='kg' ? 'selected' : ''}>kg</option>
             </select>
           </td>
-          <td><span class="del-row" data-pid="${p.id}" data-type="sup" data-rid="${r.id}" style="cursor:pointer;color:var(--text3);font-size:16px">×</span></td>
+          <td><span class="del-row" data-pid="${p.id}" data-type="sup" data-rid="${r.id}" style="cursor:pointer;color:var(--text3);font-size:16px">횞</span></td>
         </tr>`;}).join('')}
         </tbody>
       </table>
       <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
-        <span class="add-row" data-addrow="${p.id}" data-rtype="sup">＋ 영양제 추가</span>
-        <span class="paste-hint">📋 영양제 칸에 커서 두고 Ctrl+V — 영양제명↹무게 형식</span>
+        <span class="add-row" data-addrow="${p.id}" data-rtype="sup">竊??곸뼇??異붽?</span>
+        <span class="paste-hint">?뱥 ?곸뼇??移몄뿉 而ㅼ꽌 ?먭퀬 Ctrl+V ???곸뼇?쒕챸?밸Т寃??뺤떇</span>
       </div>
       ` : ''}
     </div>`;
   }).join('');
 }
 
-/* ── 이벤트 위임 (레시피 탭) ── */
+/* ?? ?대깽???꾩엫 (?덉떆???? ?? */
 document.getElementById('addProductBtn').addEventListener('click', addProduct);
 
 document.getElementById('productList').addEventListener('click', e => {
-  // 수정/닫기 버튼
+  // ?섏젙/?リ린 踰꾪듉
   const editBtn = e.target.closest('[data-edit]');
   if (editBtn) { editProduct(editBtn.dataset.edit); return; }
-  // 삭제 버튼
+  // ??젣 踰꾪듉
   const removeBtn = e.target.closest('[data-remove]');
   if (removeBtn) { removeProduct(removeBtn.dataset.remove); return; }
-  // 행 삭제
+  // ????젣
   const delRow = e.target.closest('.del-row');
   if (delRow) { removeRow(delRow.dataset.pid, delRow.dataset.type, delRow.dataset.rid); return; }
-  // 행 추가
+  // ??異붽?
   const addRow = e.target.closest('[data-addrow]');
   if (addRow) { addIngredient(addRow.dataset.addrow, addRow.dataset.rtype); return; }
   const collapsedCard = e.target.closest('.card.collapsed[data-card]');
   if (collapsedCard) { editProduct(collapsedCard.dataset.card); return; }
 });
 
-/* ── 붙여넣기 이벤트 ──
-   원료/영양제 영역(input, checkbox 등) 어디든 포커스 후 Ctrl+V 하면 감지
-   단일 행이면 일반 붙여넣기 허용, 다중 행이면 가로채서 일괄 처리
+/* ?? 遺숈뿬?ｊ린 ?대깽????
+   ?먮즺/?곸뼇???곸뿭(input, checkbox ?? ?대뵒???ъ빱????Ctrl+V ?섎㈃ 媛먯?
+   ?⑥씪 ?됱씠硫??쇰컲 遺숈뿬?ｊ린 ?덉슜, ?ㅼ쨷 ?됱씠硫?媛濡쒖콈???쇨큵 泥섎━
 */
 document.addEventListener('paste', e => {
   const focused = document.activeElement;
   if (!focused) return;
-  // 포커스된 요소가 ing-tbody 또는 sup-tbody 안에 있는지 확인
+  // ?ъ빱?ㅻ맂 ?붿냼媛 ing-tbody ?먮뒗 sup-tbody ?덉뿉 ?덈뒗吏 ?뺤씤
   const tbody = focused.closest('tbody[id]');
   if (!tbody) return;
   const match = tbody.id.match(/^(ing|sup)-tbody-(.+)$/);
   if (!match) return;
   const text = e.clipboardData.getData('text');
-  if (!text.includes('\n') && !text.includes('\t')) return; // 단순 한 칸 텍스트는 패스
+  if (!text.includes('\n') && !text.includes('\t')) return; // ?⑥닚 ??移??띿뒪?몃뒗 ?⑥뒪
   e.preventDefault();
   applyPaste(match[2], match[1], text);
 });
 
-/* ── 단가 탭 ── */
+/* ?? ?④? ???? */
 function syncPriceTab() {
   const ing = new Set(), sup = new Set();
   state.products.forEach(p => {
@@ -672,7 +683,7 @@ function syncPriceTab() {
   renderRows(sup, 'supplementPriceTable', 'supplementPriceEmpty');
 }
 
-/* ── 탭 전환 ── */
+/* ?? ???꾪솚 ?? */
 function switchTab(tab) {
   collectAllInputs();
   ['recipe', 'price', 'result', 'order', 'preview'].forEach(t => {
@@ -688,16 +699,16 @@ document.getElementById('tabBar').addEventListener('click', e => {
   if (t) switchTab(t);
 });
 
-/* ── 결과 탭 ── */
+/* ?? 寃곌낵 ???? */
 function renderResultTab() {
   const named = state.products.filter(p => p.name.trim());
   document.getElementById('productChips').innerHTML = named.length
     ? named.map(p => `<button class="chip ${state.selectedProducts.includes(p.id) ? 'selected' : ''}" data-pid="${p.id}">${esc(p.name)}</button>`).join('')
-    : '<span class="empty" style="padding:8px 0;display:block">등록된 제품이 없습니다.</span>';
+    : '<span class="empty" style="padding:8px 0;display:block">?깅줉???쒗뭹???놁뒿?덈떎.</span>';
   buildResultCards();
 }
 
-// 이벤트 위임으로 chip 클릭 처리
+// ?대깽???꾩엫?쇰줈 chip ?대┃ 泥섎━
 document.addEventListener('click', e => {
   const chip = e.target.closest('#productChips .chip');
   if (chip) { toggleProduct(chip.dataset.pid); }
@@ -724,29 +735,32 @@ function buildResultCards() {
     const unitOpts = hasUnit
       ? unitIngs.map(r => {
         const dispBase = r.unit === 'kg' ? fmt(r.weight/1000)+(r.unitName||'kg') : fmt(r.weight)+(r.unitName||'g');
-        return `<option value="${r.id}" data-base="${r.weight}" data-unitname="${esc(r.unitName||'')}" ${r.id === opt.unitId ? 'selected' : ''}>${esc(r.name)} (기준 ${dispBase})</option>`;
+        return `<option value="${r.id}" data-base="${r.weight}" data-unitname="${esc(r.unitName||'')}" ${r.id === opt.unitId ? 'selected' : ''}>${esc(r.name)} (湲곗? ${dispBase})</option>`;
       }).join('') : '';
     const selectedUnit = unitIngs.find(r => r.id === opt.unitId) || unitIngs[0];
     const unitCtrl = hasUnit ? `
       <div class="unit-ctrl">
-        <span class="unit-ctrl-label">생산 단위 원료</span>
+        <span class="unit-ctrl-label">?앹궛 ?⑥쐞 ?먮즺</span>
         <select class="unit-select" id="usel-${pid}" onchange="onUnitChange('${pid}')">${unitOpts}</select>
         <div class="unit-input-wrap">
           <input class="unit-weight-input" type="number" id="uwt-${pid}" value="${esc(opt.weight || '')}" placeholder="0" min="0" step="0.1" oninput="updateCard('${pid}')">
           <span class="unit-weight-unit" id="uwunit-${pid}">${esc(selectedUnit?.unitName || selectedUnit?.unit || "g")}</span>
         </div>
-        <span class="ratio-badge" id="uratio-${pid}">× —</span>
+        <span class="ratio-badge" id="uratio-${pid}">횞 ??/span>
       </div>`
-      : `<span style="font-size:12px;color:var(--text3)">생산단위 원료 미설정 — 레시피 1배치 기준</span>`;
+      : `<span style="font-size:12px;color:var(--text3)">?앹궛?⑥쐞 ?먮즺 誘몄꽕?????덉떆??1諛곗튂 湲곗?</span>`;
     return `<div class="rcard" id="rcard-${pid}">
       <div class="rcard-head">
         <div class="rcard-name">${esc(p.name)}</div>
         ${unitCtrl}
       </div>
-      <div class="result-actions"><button class="btn btn-primary" onclick="saveResultPreset('${pid}')">발주 프리셋 저장</button></div>
+      <div class="result-actions">
+        <input class="preset-name-input" type="text" id="preset-label-${pid}" value="${esc(opt.presetLabel || '')}" placeholder="프리셋명 입력">
+        <button class="btn btn-primary" onclick="saveResultPreset('${pid}')">발주 프리셋 저장</button>
+      </div>
       <div style="padding:6px 18px 0;display:flex;align-items:center;gap:6px">
         <input type="checkbox" id="suponly-${pid}" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent)" onchange="updateCard('${pid}')" ${opt.supplementOnly ? 'checked' : ''}>
-        <label for="suponly-${pid}" style="font-size:12px;color:var(--text2);cursor:pointer;user-select:none">영양제만 보기</label>
+        <label for="suponly-${pid}" style="font-size:12px;color:var(--text2);cursor:pointer;user-select:none">?곸뼇?쒕쭔 蹂닿린</label>
       </div>
       <div class="rcard-body" id="rbody-${pid}"></div>
       <div class="rcard-foot" id="rfoot-${pid}"></div>
@@ -764,13 +778,13 @@ function onUnitChange(pid) {
   if (sel && wt) {
     opt.unitId = sel.value;
     const base    = parseFloat(sel.selectedOptions[0]?.dataset.base) || 0;
-    // 선택된 원료의 unit 찾기
+    // ?좏깮???먮즺??unit 李얘린
     const p = state.products.find(x=>x.id===pid);
     const selIng = p?.ingredients.find(r=>r.id===sel.value);
     const unit = selIng?.unit || 'g';
     const dispBase = unit==='kg' ? fmt(base/1000) : fmt(base);
     wt.placeholder = dispBase || '0';
-    // select 옵션 텍스트도 uname 반영 (이미 렌더 시 반영됨)
+    // select ?듭뀡 ?띿뒪?몃룄 uname 諛섏쁺 (?대? ?뚮뜑 ??諛섏쁺??
     if (ut) ut.textContent = selIng?.unitName || unit;
   }
   updateCard(pid);
@@ -784,15 +798,15 @@ function getRatio(pid) {
   const sel   = document.getElementById('usel-' + pid);
   const wtEl  = document.getElementById('uwt-' + pid);
   const selId = sel?.value;
-  const inputRaw = parseFloat(wtEl?.value) || 0; // 화면 입력값 (표시 단위)
+  const inputRaw = parseFloat(wtEl?.value) || 0; // ?붾㈃ ?낅젰媛?(?쒖떆 ?⑥쐞)
   const selIng = p.ingredients.find(r => r.id === selId);
   if (!selIng || selIng.weight <= 0) return { ratio:1, baseW:0, inputW:0, unitName:'', hasInput:false, unitDisp:'g', uname:'' };
   const unit = selIng.unit || 'g';
-  const inputWg = unit === 'kg' ? inputRaw * 1000 : inputRaw; // g으로 변환해서 ratio 계산
+  const inputWg = unit === 'kg' ? inputRaw * 1000 : inputRaw; // g?쇰줈 蹂?섑빐??ratio 怨꾩궛
   if (inputRaw <= 0) return { ratio:1, baseW:selIng.weight, inputW:0, inputRaw:0, unitName:selIng.name, hasInput:false, unitDisp:unit, uname:selIng.unitName||'' };
   const uname = selIng.unitName || '';
-  // 단위명 있으면: 입력값 = 몇 마리(배치 수) → ratio = inputRaw
-  // 단위명 없으면: 입력값 = 중량 → ratio = inputWg / baseWeight
+  // ?⑥쐞紐??덉쑝硫? ?낅젰媛?= 紐?留덈━(諛곗튂 ?? ??ratio = inputRaw
+  // ?⑥쐞紐??놁쑝硫? ?낅젰媛?= 以묐웾 ??ratio = inputWg / baseWeight
   const ratio = uname ? inputRaw : inputWg / selIng.weight;
   return { ratio, baseW: selIng.weight, inputW: uname ? inputRaw * selIng.weight : inputWg, inputRaw, unitName: selIng.name, hasInput: true, unitDisp: unit, uname };
 }
@@ -809,7 +823,7 @@ function updateCard(pid) {
   if (supOnlyEl) opt.supplementOnly = supOnlyEl.checked;
   const { ratio, baseW, inputW, inputRaw, unitName, hasInput, unitDisp, uname } = getRatio(pid);
   const rb = document.getElementById('uratio-' + pid);
-  if (rb) rb.textContent = hasInput ? `× ${fmt(ratio)}` : '× —';
+  if (rb) rb.textContent = hasInput ? `횞 ${fmt(ratio)}` : '횞 ??;
 
   const supOnly = document.getElementById('suponly-' + pid)?.checked || false;
   const allRows = [
@@ -825,13 +839,12 @@ function updateCard(pid) {
     const cost = hasPrice ? (scaledW / pd.unit) * pd.price : 0;
     totalW += scaledW; totalC += cost;
     const kindBadge = r.kind === 'ing'
-      ? `<span class="tkind ${r.isUnit ? 'k-unit' : 'k-ing'}">${r.isUnit ? '생산단위' : '원료'}</span>`
-      : `<span class="tkind k-sup">영양제</span>`;
+      ? `<span class="tkind ${r.isUnit ? 'k-unit' : 'k-ing'}">${r.isUnit ? '?앹궛?⑥쐞' : '?먮즺'}</span>`
+      : `<span class="tkind k-sup">?곸뼇??/span>`;
     const costCell = hasPrice
-      ? `<td class="cost">${Math.round(cost).toLocaleString()}원</td>`
-      : `<td class="cost-na">미입력</td>`;
-    // 표시 단위: 레시피 입력 단위 그대로
-    const dispW = r.unit === 'kg' ? fmt(scaledW/1000)+'kg' : fmt(scaledW)+'g';
+      ? `<td class="cost">${Math.round(cost).toLocaleString()}??/td>`
+      : `<td class="cost-na">誘몄엯??/td>`;
+    // ?쒖떆 ?⑥쐞: ?덉떆???낅젰 ?⑥쐞 洹몃?濡?    const dispW = r.unit === 'kg' ? fmt(scaledW/1000)+'kg' : fmt(scaledW)+'g';
     return `<tr>
       <td>${esc(r.name)}${kindBadge}</td>
       <td class="wt">${dispW}</td>
@@ -841,13 +854,13 @@ function updateCard(pid) {
 
   document.getElementById('rbody-' + pid).innerHTML = `
     <table class="rt">
-      <thead><tr><th>원료 / 영양제</th><th class="num">중량</th><th class="num">원가</th></tr></thead>
+      <thead><tr><th>?먮즺 / ?곸뼇??/th><th class="num">以묐웾</th><th class="num">?먭?</th></tr></thead>
       <tbody>
-        ${rows || '<tr><td colspan="3" style="color:var(--text3);font-size:12px;padding:12px 6px">입력된 원료가 없습니다.</td></tr>'}
+        ${rows || '<tr><td colspan="3" style="color:var(--text3);font-size:12px;padding:12px 6px">?낅젰???먮즺媛 ?놁뒿?덈떎.</td></tr>'}
         <tr class="subtotal">
-          <td>합계</td>
+          <td>?⑷퀎</td>
           <td class="num">${fmt(totalW)}g</td>
-          <td class="num">${Math.round(totalC).toLocaleString()}원</td>
+          <td class="num">${Math.round(totalC).toLocaleString()}??/td>
         </tr>
       </tbody>
     </table>`;
@@ -856,13 +869,13 @@ function updateCard(pid) {
   const baseDisp = uname ? fmt(baseW/(unitDisp==='kg'?1000:1))+(unitDisp==='kg'?'kg':'g')+'/'+uname : (unitDisp==='kg' ? fmt(baseW/1000)+'kg' : fmt(baseW)+'g');
   const inDisp   = fmt(inputRaw) + dispUnit;
   const footDesc = hasInput
-    ? `${esc(unitName)} ${inDisp} 입력 (기준 ${baseDisp} → × ${fmt(ratio)})`
-    : unitName ? `${esc(unitName)} 중량 입력 전 — 레시피 기준` : '레시피 1배치 기준';
+    ? `${esc(unitName)} ${inDisp} ?낅젰 (湲곗? ${baseDisp} ??횞 ${fmt(ratio)})`
+    : unitName ? `${esc(unitName)} 以묐웾 ?낅젰 ?????덉떆??湲곗?` : '?덉떆??1諛곗튂 湲곗?';
 
   document.getElementById('rfoot-' + pid).innerHTML = `
     <div class="foot-desc">${footDesc}</div>
-    <div class="foot-item"><div class="foot-label">총 중량</div><div class="foot-val">${fmt(totalW)}g</div></div>
-    <div class="foot-item"><div class="foot-label">총 원가</div><div class="foot-val">${Math.round(totalC).toLocaleString()}원</div></div>`;
+    <div class="foot-item"><div class="foot-label">珥?以묐웾</div><div class="foot-val">${fmt(totalW)}g</div></div>
+    <div class="foot-item"><div class="foot-label">珥??먭?</div><div class="foot-val">${Math.round(totalC).toLocaleString()}??/div></div>`;
 
   updateGrand();
 }
@@ -883,41 +896,66 @@ function updateGrand() {
   const el = document.getElementById('grand');
   if (!el) return;
   el.innerHTML = `
-    <div class="grand-title">전체 합계 (선택 제품)</div>
+    <div class="grand-title">?꾩껜 ?⑷퀎 (?좏깮 ?쒗뭹)</div>
     <div class="grand-grid">
-      <div class="metric"><div class="metric-label">총 중량</div><div class="metric-value">${fmt(gW)}g</div></div>
-      <div class="metric"><div class="metric-label">총 원가</div><div class="metric-value">${Math.round(gC).toLocaleString()}원</div></div>
+      <div class="metric"><div class="metric-label">珥?以묐웾</div><div class="metric-value">${fmt(gW)}g</div></div>
+      <div class="metric"><div class="metric-label">珥??먭?</div><div class="metric-value">${Math.round(gC).toLocaleString()}??/div></div>
     </div>`;
 }
 
 
-/* ── 발주 통합 ── */
+/* ?? 諛쒖＜ ?듯빀 ?? */
 function jsString(s) { return JSON.stringify(String(s || '')).replace(/</g, '\u003c'); }
 function orderWeightKey(w) { return String(Math.round((Number(w) || 0) * 100) / 100); }
 function fmtPresetWeight(w) {
   const n = Number(w) || 0;
   return n >= 1000 && n % 1000 === 0 ? fmt(n / 1000) + 'kg' : fmt(n) + 'g';
 }
+function fmtPresetWeightName(w) {
+  const n = Number(w) || 0;
+  if (n >= 1000 && n % 1000 === 0) return String(Math.round(n / 1000)).padStart(2, '0') + 'KG';
+  return String(Math.round(n)).padStart(2, '0') + 'G';
+}
+function buildPresetDisplayName(productName, weight, label) {
+  return `${productName} ${fmtPresetWeightName(weight)}${label ? ' ' + label : ''}`.trim();
+}
 function getProductPrefix(productName) {
   if (PRODUCT_CODE_PREFIX[productName]) return PRODUCT_CODE_PREFIX[productName];
   const idx = state.products.findIndex(p => p.name.trim() === productName);
   return idx >= 0 && idx < 26 ? String.fromCharCode(65 + idx) : `P${idx + 1}`;
+}
+function getProductByName(productName) {
+  return state.products.find(p => p.name.trim() === productName);
+}
+function getSupplementAlias(row) {
+  return (row?.alias || '').trim() || (SUP_MAP[row?.name] || row?.name || '').trim();
 }
 function normalizePresetList(productName, list) {
   const prefix = getProductPrefix(productName);
   const normalized = (Array.isArray(list) ? list : []).map((entry, index) => {
     const weight = Number(typeof entry === 'object' ? (entry.weight ?? entry.grams ?? entry.value) : entry);
     if (!weight || weight <= 0) return null;
-    const code = typeof entry === 'object' ? String(entry.code || entry.name || '').trim() : '';
-    return { code, weight: Number(orderWeightKey(weight)), sortIndex: index };
+    return {
+      code: typeof entry === 'object' ? String(entry.code || '').trim() : '',
+      label: typeof entry === 'object' ? String(entry.label || '').trim() : '',
+      unitId: typeof entry === 'object' ? String(entry.unitId || '').trim() : '',
+      weight: Number(orderWeightKey(weight)),
+      sortIndex: index
+    };
   }).filter(Boolean).sort((a, b) => a.weight - b.weight || a.sortIndex - b.sortIndex);
   const seen = new Set();
   return normalized.filter(entry => {
-    const key = orderWeightKey(entry.weight);
+    const key = `${orderWeightKey(entry.weight)}__${entry.label || ''}`;
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
-  }).map((entry, index) => ({ code: entry.code || `${prefix}${index}`, weight: entry.weight }));
+  }).map((entry, index) => ({
+    code: entry.code || `${prefix}${index}`,
+    label: entry.label || '',
+    unitId: entry.unitId || '',
+    weight: entry.weight,
+    displayName: buildPresetDisplayName(productName, entry.weight, entry.label || '')
+  }));
 }
 function loadOrderData() {
   try {
@@ -930,6 +968,12 @@ function loadOrderData() {
   }
   Object.keys(orderPresets).forEach(productName => {
     orderPresets[productName] = normalizePresetList(productName, orderPresets[productName]);
+    const migrated = {};
+    Object.entries(orderData[productName] || {}).forEach(([key, value]) => {
+      const preset = orderPresets[productName].find(entry => entry.code === key || orderWeightKey(entry.weight) === orderWeightKey(key));
+      migrated[preset?.code || key] = value;
+    });
+    if (Object.keys(migrated).length) orderData[productName] = migrated;
   });
 }
 function saveOrderData(silent=false) {
@@ -940,12 +984,21 @@ function getPresetEntries(productName) {
   orderPresets[productName] = normalizePresetList(productName, orderPresets[productName]);
   return orderPresets[productName];
 }
-function addOrderPreset(productName, grams) {
-  const key = orderWeightKey(grams);
-  const current = getPresetEntries(productName).slice();
-  if (!current.some(entry => orderWeightKey(entry.weight) === key)) current.push({ weight: Number(key) });
-  orderPresets[productName] = normalizePresetList(productName, current);
-  return orderPresets[productName].find(entry => orderWeightKey(entry.weight) === key);
+function getPresetStorageKey(preset) {
+  return preset?.code || orderWeightKey(preset?.weight);
+}
+function getPresetRatio(product, preset) {
+  if (!product || !preset) return 1;
+  const unitIngs = (product.ingredients || []).filter(r => r.isUnit && r.name.trim() && r.weight > 0);
+  const selected = unitIngs.find(r => r.id === preset.unitId) || unitIngs[0];
+  if (!selected || !selected.weight) return 1;
+  return preset.weight / selected.weight;
+}
+function getPresetSupplementWeight(product, preset, supplementName) {
+  if (!product || !preset) return 0;
+  const row = (product.supplements || []).find(r => r.name.trim() === supplementName);
+  if (!row || !row.weight) return 0;
+  return row.weight * getPresetRatio(product, preset);
 }
 function saveResultPreset(pid) {
   updateCard(pid);
@@ -953,25 +1006,31 @@ function saveResultPreset(pid) {
   if (!p || !p.name.trim()) { showToast('제품명이 필요합니다.'); return; }
   const ratioInfo = getRatio(pid);
   if (!ratioInfo.hasInput || !ratioInfo.inputW) { showToast('먼저 결과 중량을 입력하세요.'); return; }
-  const preset = addOrderPreset(p.name.trim(), ratioInfo.inputW);
+  const opt = getResultOption(pid);
+  const label = (opt.presetLabel || '').trim();
+  const weightKey = orderWeightKey(ratioInfo.inputW);
+  const current = getPresetEntries(p.name.trim()).slice();
+  current.push({ weight: Number(weightKey), label, unitId: opt.unitId || '' });
+  orderPresets[p.name.trim()] = normalizePresetList(p.name.trim(), current);
+  const preset = [...orderPresets[p.name.trim()]].reverse().find(entry => orderWeightKey(entry.weight) === weightKey && (entry.label || '') === label) || orderPresets[p.name.trim()][0];
   saveOrderData(true);
   renderPresetGrid();
   renderOrderTab();
-  showToast(`${p.name.trim()} ${preset.code} (${fmtPresetWeight(preset.weight)}) 저장`);
+  showToast(`${preset.displayName} 저장`);
 }
 function renderPresetGrid() {
   const grid = document.getElementById('presetGrid');
   if (!grid) return;
   const names = Object.keys(orderPresets).filter(name => getPresetEntries(name).length);
   if (!names.length) {
-    grid.innerHTML = '<div class="empty">아직 프리셋이 없습니다. 결과 탭에서 저장하거나 위에 붙여넣기 하세요.</div>';
+    grid.innerHTML = '<div class="empty">아직 프리셋이 없습니다. 결과 탭에서 저장하세요.</div>';
     return;
   }
   grid.innerHTML = names.map(name => {
     const entries = getPresetEntries(name);
     return `<div class="preset-card">
       <div class="preset-card-name"><span>${esc(name)}</span><button class="btn btn-danger" onclick="deletePreset(${jsString(name)})">삭제</button></div>
-      <div class="preset-card-meta">${entries.map(entry => `<div class="preset-card-code"><span class="badge">${esc(entry.code)}</span><span>${fmtPresetWeight(entry.weight)}</span></div>`).join('')}</div>
+      <div class="preset-card-meta">${entries.map(entry => `<div class="preset-card-code"><span class="badge">${esc(entry.code)}</span><span>${esc(entry.displayName)}</span></div>`).join('')}</div>
     </div>`;
   }).join('');
   renderProductCodeDesc();
@@ -979,7 +1038,14 @@ function renderPresetGrid() {
 function renderSupMapTable() {
   const tbody = document.getElementById('supMapTable');
   if (!tbody) return;
-  tbody.innerHTML = Object.entries(SUP_MAP).map(([from, to]) => `<tr><td>${esc(from)}</td><td><span class="badge">${esc(to)}</span></td><td></td></tr>`).join('');
+  const rows = [];
+  state.products.forEach(product => {
+    (product.supplements || []).forEach(sup => {
+      if (!sup.name || !sup.name.trim()) return;
+      rows.push(`<tr><td>${esc(sup.name)}</td><td><span class="badge">${esc(getSupplementAlias(sup))}</span></td><td>${esc(product.name || '')}</td></tr>`);
+    });
+  });
+  tbody.innerHTML = rows.join('') || '<tr><td colspan="3" style="color:var(--text3)">레시피 탭에서 영양제를 입력하면 여기에 표시됩니다.</td></tr>';
   renderProductCodeDesc();
 }
 function renderProductCodeDesc() {
@@ -987,7 +1053,7 @@ function renderProductCodeDesc() {
   if (!desc) return;
   const names = Object.keys(orderPresets).filter(name => getPresetEntries(name).length);
   desc.innerHTML = names.length ? names.map(name => {
-    const examples = getPresetEntries(name).slice(0, 4).map(entry => `${entry.code}=${fmtPresetWeight(entry.weight)}`).join(', ');
+    const examples = getPresetEntries(name).slice(0, 4).map(entry => `${entry.code}=${entry.displayName}`).join(', ');
     return `<div style="margin-bottom:4px"><b>${esc(name)}</b> → <span style="color:var(--text3)">${examples}</span></div>`;
   }).join('') : '<span style="color:var(--text3)">프리셋 저장 후 코드가 표시됩니다.</span>';
 }
@@ -1006,27 +1072,6 @@ function deletePreset(name) {
   renderPresetGrid();
   renderOrderTab();
 }
-function parseOrderPresetPaste(text) {
-  const parsed = {};
-  text.trim().split(/\r?\n/).forEach(line => {
-    const cols = line.split(/\t| {2,}/).map(s => s.trim()).filter(Boolean);
-    if (cols.length < 2) return;
-    const name = cols[0];
-    const weights = cols.slice(1).map(v => {
-      const raw = String(v).toLowerCase();
-      const n = parseFloat(raw.replace(/,/g, ''));
-      if (!n || n <= 0) return 0;
-      return raw.includes('kg') ? n * 1000 : n;
-    }).filter(Boolean);
-    if (name && weights.length) parsed[name] = weights.map(weight => ({ weight }));
-  });
-  return parsed;
-}
-function getRecipeSupplements() {
-  const sups = new Set();
-  state.products.forEach(p => (p.supplements || []).forEach(r => { if (r.name && r.name.trim()) sups.add(r.name.trim()); }));
-  return Array.from(sups);
-}
 function renderOrderTab() {
   const area = document.getElementById('orderArea');
   if (!area) return;
@@ -1035,49 +1080,40 @@ function renderOrderTab() {
     area.innerHTML = '<div class="empty">프리셋을 먼저 등록하세요. 결과 탭에서 중량 입력 후 저장하면 바로 들어옵니다.</div>';
     return;
   }
-  const allSups = getRecipeSupplements();
-  if (!allSups.length) {
-    area.innerHTML = '<div class="empty">레시피에 영양제가 등록되어 있지 않습니다.</div>';
-    return;
-  }
-  const nonEggSups = allSups.filter(s => s !== EGGSHELL_NAME);
-  const hasEgg = allSups.includes(EGGSHELL_NAME);
   area.innerHTML = products.map(productName => {
+    const product = getProductByName(productName);
     const presets = getPresetEntries(productName);
+    if (!product || !(product.supplements || []).some(r => r.name && r.name.trim())) {
+      return `<div class="order-product-row"><div class="empty">"${esc(productName)}" 제품의 영양제 레시피가 없습니다.</div></div>`;
+    }
+    const supplementRows = product.supplements.filter(r => r.name && r.name.trim());
     return `<div class="order-product-row">
       <div class="order-product-header">
         <span class="order-product-name">${esc(productName)}</span>
         <span class="badge">${esc(getProductPrefix(productName))}</span>
-        <span style="font-size:12px;color:var(--text3)">규격별 부족 수량 입력</span>
+        <span style="font-size:12px;color:var(--text3)">규격별 배합량(g)과 부족 수량</span>
       </div>
       <div class="order-table-wrap">
         <table>
-          <thead><tr><th style="width:140px">영양제</th>${presets.map(entry => `<th style="text-align:center;width:92px">${esc(entry.code)}<br><span style="font-weight:400;font-size:10px">${fmtPresetWeight(entry.weight)}</span></th>`).join('')}</tr></thead>
+          <thead><tr><th style="width:160px">영양제</th>${presets.map(entry => `<th style="text-align:center;width:140px">${esc(entry.code)}<br><span style="font-weight:400;font-size:10px">${esc(entry.label || fmtPresetWeight(entry.weight))}</span></th>`).join('')}</tr></thead>
           <tbody>
-            ${nonEggSups.map(sup => `<tr>
-              <td style="font-weight:500">${esc(SUP_MAP[sup] || sup)} <span style="font-size:10px;color:var(--text3)">(${esc(sup)})</span></td>
+            ${supplementRows.map(sup => `<tr>
+              <td style="font-weight:500">${esc(getSupplementAlias(sup))} <span style="font-size:10px;color:var(--text3)">(${esc(sup.name)})</span></td>
               ${presets.map(entry => {
-                const key = orderWeightKey(entry.weight);
-                const val = orderData[productName]?.[key]?.[sup] || '';
-                return `<td><input type="number" min="0" step="1" placeholder="0" value="${esc(val)}" onchange="setOrderVal(${jsString(productName)},${Number(key)},${jsString(sup)},this.value)" style="width:100%;text-align:center;background:transparent;border:none;font-size:13px;font-weight:600;color:var(--text);outline:none;font-family:inherit;padding:2px"></td>`;
+                const key = getPresetStorageKey(entry);
+                const val = orderData[productName]?.[key]?.[sup.name] || '';
+                const grams = getPresetSupplementWeight(product, entry, sup.name);
+                return `<td><div class="order-cell"><div class="order-cell-grams">${fmt(grams)}g</div><div class="order-cell-sub">부족 수량</div><input class="order-cell-input" type="number" min="0" step="1" placeholder="0" value="${esc(val)}" onchange="setOrderVal(${jsString(productName)},${jsString(key)},${jsString(sup.name)},this.value)"></div></td>`;
               }).join('')}
             </tr>`).join('')}
-            ${hasEgg ? `<tr style="background:#fff8e1">
-              <td style="font-weight:600"><span class="badge badge-eggshell">난각분</span></td>
-              ${presets.map(entry => {
-                const key = orderWeightKey(entry.weight);
-                const val = orderData[productName]?.[key]?.[EGGSHELL_NAME] || '';
-                return `<td><input type="number" min="0" step="1" placeholder="0" value="${esc(val)}" onchange="setOrderVal(${jsString(productName)},${Number(key)},${jsString(EGGSHELL_NAME)},this.value)" style="width:100%;text-align:center;background:transparent;border:none;font-size:13px;font-weight:600;color:#856404;outline:none;font-family:inherit;padding:2px"></td>`;
-              }).join('')}
-            </tr>` : ''}
           </tbody>
         </table>
       </div>
     </div>`;
   }).join('');
 }
-function setOrderVal(productName, weight, supName, val) {
-  const key = orderWeightKey(weight);
+function setOrderVal(productName, presetCode, supName, val) {
+  const key = String(presetCode);
   if (!orderData[productName]) orderData[productName] = {};
   if (!orderData[productName][key]) orderData[productName][key] = {};
   const n = parseInt(val, 10) || 0;
@@ -1089,16 +1125,16 @@ function generatePreview() {
   saveOrderData(true);
   const eggshellRows = [];
   const orderRows = [];
-  Object.entries(orderData).forEach(([productName, weightMap]) => {
+  Object.entries(orderData).forEach(([productName, presetMap]) => {
     const presets = getPresetEntries(productName);
-    Object.entries(weightMap).forEach(([weightStr, supMap]) => {
-      const weight = Number(weightStr);
-      const preset = presets.find(entry => orderWeightKey(entry.weight) === orderWeightKey(weight));
+    Object.entries(presetMap).forEach(([presetCode, supMap]) => {
+      const preset = presets.find(entry => getPresetStorageKey(entry) === presetCode);
+      const weight = Number(preset?.weight || 0);
       const weightCode = preset?.code || `${getProductPrefix(productName)}?`;
       Object.entries(supMap).forEach(([supName, qty]) => {
         if (!qty || qty <= 0) return;
         if (supName === EGGSHELL_NAME) eggshellRows.push({ weight, qty });
-        else orderRows.push({ productName, weight, weightCode, supName, supCode: SUP_MAP[supName] || supName, qty });
+        else orderRows.push({ productName, weight, weightCode, supName, supCode: supName, qty });
       });
     });
   });
@@ -1119,7 +1155,11 @@ function generatePreview() {
     orderRows.forEach(row => { if (!grouped[row.weightCode]) grouped[row.weightCode] = []; grouped[row.weightCode].push(row); });
     const rows = Object.entries(grouped).sort().map(([code, rows]) => {
       const first = rows[0];
-      const items = rows.map(r => `${esc(r.supCode)} ${r.qty}`).join(' / ');
+      const product = getProductByName(first.productName);
+      const items = rows.map(r => {
+        const sup = product?.supplements?.find(s => s.name === r.supName);
+        return `${esc(getSupplementAlias(sup || { name: r.supName }))} ${r.qty}`;
+      }).join(' / ');
       return `<tr><td>${esc(code)}</td><td class="left">${esc(first.productName)} ${fmtPresetWeight(first.weight)}</td><td class="left">${items}</td></tr>`;
     }).join('');
     const section = `<div class="preview-section"><div class="preview-title">영양제 발주 목록</div><div class="preview-sub">${today}</div><table class="pv-table"><thead><tr><th style="width:18%">코드</th><th class="left" style="width:32%">제품/규격</th><th class="left">영양제/수량</th></tr></thead><tbody>${rows}</tbody></table></div>`;
@@ -1129,27 +1169,7 @@ function generatePreview() {
   document.getElementById('previewArea').innerHTML = previewHtml;
   document.getElementById('printWrapper').innerHTML = printHtml;
   switchTab('preview');
-}
-const orderPasteZone = document.getElementById('orderPasteZone');
-if (orderPasteZone) {
-  orderPasteZone.addEventListener('paste', e => {
-    const text = e.clipboardData.getData('text');
-    const parsed = parseOrderPresetPaste(text);
-    if (!Object.keys(parsed).length) { showToast('파싱 실패. 형식: 제품명, 중량1, 중량2'); return; }
-    e.preventDefault();
-    Object.entries(parsed).forEach(([name, entries]) => {
-      const existing = getPresetEntries(name).slice();
-      entries.forEach(entry => existing.push(entry));
-      orderPresets[name] = normalizePresetList(name, existing);
-    });
-    saveOrderData(true);
-    renderPresetGrid();
-    renderOrderTab();
-    showToast(`${Object.keys(parsed).length}개 제품 프리셋 추가`);
-  });
-}
-
-/* ── 초기화 ── */
+}/* ?? 珥덇린???? */
 loadData();
 loadOrderData();
 renderProducts();
@@ -1164,3 +1184,7 @@ window.addEventListener('beforeunload', () => {
 </script>
 </body>
 </html>
+
+
+
+
