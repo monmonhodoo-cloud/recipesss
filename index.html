@@ -34,7 +34,7 @@
   .save-btn{background:var(--accent);color:var(--accent-text);border:none}
   .download-btn{background:transparent;color:var(--text);border:0.5px solid var(--border2)}
   .save-btn:hover,.download-btn:hover{opacity:.85}
-  .container{max-width:860px;margin:0 auto;padding:20px 16px 60px}
+  .container{max-width:1280px;margin:0 auto;padding:20px 16px 60px}
   .tab-bar{display:flex;background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);padding:4px;margin-bottom:20px;gap:2px}
   .tab{flex:1;padding:9px 12px;text-align:center;cursor:pointer;font-size:13px;font-weight:500;color:var(--text2);border-radius:8px;transition:all .15s;user-select:none}
   .tab.active{background:var(--accent);color:var(--accent-text)}
@@ -73,6 +73,8 @@
 
   /* 결과 카드 */
   .rcard{background:var(--bg);border:0.5px solid var(--border);border-radius:var(--radius-lg);margin-bottom:16px;overflow:hidden}
+  .result-grid{display:grid;grid-template-columns:1fr;gap:14px;align-items:start}
+  .result-grid .rcard{margin-bottom:0}
   .rcard-head{padding:14px 18px 12px;border-bottom:0.5px solid var(--border)}
   .rcard-name{font-size:15px;font-weight:600;letter-spacing:-.02em;margin-bottom:10px}
   .unit-ctrl{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
@@ -115,6 +117,20 @@
     .container{padding:14px 10px 60px}
     .metric-value{font-size:20px}
     .unit-ctrl{gap:6px}
+  }
+  @media(min-width:760px){
+    .result-grid{grid-template-columns:repeat(2,minmax(0,1fr))}
+  }
+  @media(min-width:1120px){
+    .result-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .result-grid .rcard-head{padding:12px 14px 10px}
+    .result-grid .rcard-body{padding:4px 12px 10px}
+    .result-grid .rcard-foot{padding:10px 14px;gap:12px;flex-wrap:wrap}
+    .result-grid .unit-select{max-width:100%;width:100%}
+    .result-grid .unit-input-wrap{flex:1;min-width:118px}
+    .result-grid .rt td,.result-grid .rt th{padding-left:5px;padding-right:5px}
+    .result-grid .foot-desc{flex-basis:100%}
+    .result-grid .foot-val{font-size:16px}
   }
 </style>
 </head>
@@ -177,7 +193,7 @@
 <div class="toast" id="toast"></div>
 
 <script>
-let state = { products: [], prices: {}, selectedProducts: [] };
+let state = { products: [], prices: {}, selectedProducts: [], resultOptions: {} };
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
@@ -196,7 +212,8 @@ function downloadData() {
     exportedAt: new Date().toISOString(),
     products: state.products,
     prices: state.prices,
-    selectedProducts: state.selectedProducts
+    selectedProducts: state.selectedProducts,
+    resultOptions: state.resultOptions
   };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json;charset=utf-8' });
   const url = URL.createObjectURL(blob);
@@ -215,6 +232,7 @@ function loadData() {
     state.products = d.products || [];
     state.prices = d.prices || {};
     state.selectedProducts = d.selectedProducts || [];
+    state.resultOptions = d.resultOptions || {};
   } catch(e) {}
 }
 
@@ -254,6 +272,26 @@ function collectAllInputs() {
     });
   });
   collectPrices();
+  collectResultInputs();
+}
+
+function getResultOption(pid) {
+  if (!state.resultOptions) state.resultOptions = {};
+  if (!state.resultOptions[pid]) state.resultOptions[pid] = { unitId: '', weight: '', supplementOnly: false };
+  return state.resultOptions[pid];
+}
+
+function collectResultInputs() {
+  if (!state.resultOptions) state.resultOptions = {};
+  state.selectedProducts.forEach(pid => {
+    const opt = getResultOption(pid);
+    const sel = document.getElementById('usel-' + pid);
+    const wt = document.getElementById('uwt-' + pid);
+    const supOnly = document.getElementById('suponly-' + pid);
+    if (sel) opt.unitId = sel.value;
+    if (wt) opt.weight = wt.value;
+    if (supOnly) opt.supplementOnly = supOnly.checked;
+  });
 }
 function collectPrices() {
   document.querySelectorAll('#ingredientPriceTable tr[data-name], #supplementPriceTable tr[data-name]').forEach(tr => {
@@ -510,13 +548,6 @@ function renderResultTab() {
   buildResultCards();
 }
 
-document.getElementById('productChips') && document.addEventListener('click', e => {
-  const chip = e.target.closest('.chip[data-pid]');
-  if (chip && document.getElementById('tab-result').contains(chip)) {
-    toggleProduct(chip.dataset.pid);
-  }
-});
-
 // 이벤트 위임으로 chip 클릭 처리
 document.addEventListener('click', e => {
   const chip = e.target.closest('#productChips .chip');
@@ -524,6 +555,7 @@ document.addEventListener('click', e => {
 });
 
 function toggleProduct(pid) {
+  collectResultInputs();
   const idx = state.selectedProducts.indexOf(pid);
   if (idx > -1) state.selectedProducts.splice(idx, 1);
   else state.selectedProducts.push(pid);
@@ -533,23 +565,26 @@ function toggleProduct(pid) {
 function buildResultCards() {
   const area = document.getElementById('resultArea');
   if (!state.selectedProducts.length) { area.innerHTML = ''; return; }
-  area.innerHTML = state.selectedProducts.map(pid => {
+  const cards = state.selectedProducts.map(pid => {
     const p = state.products.find(x => x.id === pid);
     if (!p) return '';
     const unitIngs = p.ingredients.filter(r => r.isUnit && r.name.trim() && r.weight > 0);
     const hasUnit = unitIngs.length > 0;
+    const opt = getResultOption(pid);
+    if (hasUnit && !unitIngs.some(r => r.id === opt.unitId)) opt.unitId = unitIngs[0].id;
     const unitOpts = hasUnit
       ? unitIngs.map(r => {
         const dispBase = r.unit === 'kg' ? fmt(r.weight/1000)+(r.unitName||'kg') : fmt(r.weight)+(r.unitName||'g');
-        return `<option value="${r.id}" data-base="${r.weight}" data-unitname="${esc(r.unitName||'')}">${esc(r.name)} (기준 ${dispBase})</option>`;
+        return `<option value="${r.id}" data-base="${r.weight}" data-unitname="${esc(r.unitName||'')}" ${r.id === opt.unitId ? 'selected' : ''}>${esc(r.name)} (기준 ${dispBase})</option>`;
       }).join('') : '';
+    const selectedUnit = unitIngs.find(r => r.id === opt.unitId) || unitIngs[0];
     const unitCtrl = hasUnit ? `
       <div class="unit-ctrl">
         <span class="unit-ctrl-label">생산 단위 원료</span>
         <select class="unit-select" id="usel-${pid}" onchange="onUnitChange('${pid}')">${unitOpts}</select>
         <div class="unit-input-wrap">
-          <input class="unit-weight-input" type="number" id="uwt-${pid}" value="" placeholder="0" min="0" step="0.1" oninput="updateCard('${pid}')">
-          <span class="unit-weight-unit" id="uwunit-${pid}">${unitIngs[0]?.unitName || unitIngs[0]?.unit || "g"}</span>
+          <input class="unit-weight-input" type="number" id="uwt-${pid}" value="${esc(opt.weight || '')}" placeholder="0" min="0" step="0.1" oninput="updateCard('${pid}')">
+          <span class="unit-weight-unit" id="uwunit-${pid}">${esc(selectedUnit?.unitName || selectedUnit?.unit || "g")}</span>
         </div>
         <span class="ratio-badge" id="uratio-${pid}">× —</span>
       </div>`
@@ -560,13 +595,14 @@ function buildResultCards() {
         ${unitCtrl}
       </div>
       <div style="padding:6px 18px 0;display:flex;align-items:center;gap:6px">
-        <input type="checkbox" id="suponly-${pid}" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent)" onchange="updateCard('${pid}')">
+        <input type="checkbox" id="suponly-${pid}" style="width:14px;height:14px;cursor:pointer;accent-color:var(--accent)" onchange="updateCard('${pid}')" ${opt.supplementOnly ? 'checked' : ''}>
         <label for="suponly-${pid}" style="font-size:12px;color:var(--text2);cursor:pointer;user-select:none">영양제만 보기</label>
       </div>
       <div class="rcard-body" id="rbody-${pid}"></div>
       <div class="rcard-foot" id="rfoot-${pid}"></div>
     </div>`;
-  }).join('') + `<div class="grand" id="grand"></div>`;
+  }).join('');
+  area.innerHTML = `<div class="result-grid">${cards}</div><div class="grand" id="grand"></div>`;
   state.selectedProducts.forEach(pid => updateCard(pid));
 }
 
@@ -574,7 +610,9 @@ function onUnitChange(pid) {
   const sel = document.getElementById('usel-' + pid);
   const wt  = document.getElementById('uwt-' + pid);
   const ut  = document.getElementById('uwunit-' + pid);
+  const opt = getResultOption(pid);
   if (sel && wt) {
+    opt.unitId = sel.value;
     const base    = parseFloat(sel.selectedOptions[0]?.dataset.base) || 0;
     // 선택된 원료의 unit 찾기
     const p = state.products.find(x=>x.id===pid);
@@ -612,6 +650,13 @@ function getRatio(pid) {
 function updateCard(pid) {
   const p = state.products.find(x => x.id === pid);
   if (!p) return;
+  const opt = getResultOption(pid);
+  const sel = document.getElementById('usel-' + pid);
+  const wt = document.getElementById('uwt-' + pid);
+  const supOnlyEl = document.getElementById('suponly-' + pid);
+  if (sel) opt.unitId = sel.value;
+  if (wt) opt.weight = wt.value;
+  if (supOnlyEl) opt.supplementOnly = supOnlyEl.checked;
   const { ratio, baseW, inputW, inputRaw, unitName, hasInput, unitDisp, uname } = getRatio(pid);
   const rb = document.getElementById('uratio-' + pid);
   if (rb) rb.textContent = hasInput ? `× ${fmt(ratio)}` : '× —';
