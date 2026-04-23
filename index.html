@@ -432,6 +432,7 @@ document.addEventListener('paste', e => {
 
 /* ── 단가 탭 ── */
 function syncPriceTab() {
+  collectPrices();
   collectAllInputs();
   const ing = new Set(), sup = new Set();
   state.products.forEach(p => {
