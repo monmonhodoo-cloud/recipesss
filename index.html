@@ -433,7 +433,6 @@ document.addEventListener('paste', e => {
 /* ── 단가 탭 ── */
 function syncPriceTab() {
   collectPrices();
-  collectAllInputs();
   const ing = new Set(), sup = new Set();
   state.products.forEach(p => {
     p.ingredients.forEach(r => { if (r.name.trim()) ing.add(r.name.trim()); });
@@ -474,7 +473,6 @@ document.getElementById('tabBar').addEventListener('click', e => {
 
 /* ── 결과 탭 ── */
 function renderResultTab() {
-  collectAllInputs();
   const named = state.products.filter(p => p.name.trim());
   document.getElementById('productChips').innerHTML = named.length
     ? named.map(p => `<button class="chip ${state.selectedProducts.includes(p.id) ? 'selected' : ''}" data-pid="${p.id}">${esc(p.name)}</button>`).join('')
