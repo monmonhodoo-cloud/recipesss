@@ -230,16 +230,12 @@ function collectAllInputs() {
   collectPrices();
 }
 function collectPrices() {
-  const rows = document.querySelectorAll('#ingredientPriceTable tr[data-name], #supplementPriceTable tr[data-name]');
-  console.log('[collectPrices] 행 수:', rows.length);
-  rows.forEach(tr => {
+  document.querySelectorAll('#ingredientPriceTable tr[data-name], #supplementPriceTable tr[data-name]').forEach(tr => {
     const nm = tr.dataset.name;
     if (!state.prices[nm]) state.prices[nm] = {};
     state.prices[nm].unit  = parseFloat(tr.querySelector('.unit-inp')?.value) || 0;
     state.prices[nm].price = parseFloat(tr.querySelector('.price-inp')?.value) || 0;
-    console.log('['+nm+'] unit='+state.prices[nm].unit+', price='+state.prices[nm].price);
   });
-  console.log('[collectPrices] state.prices:', JSON.stringify(state.prices));
 }
 
 /* ── 엑셀 붙여넣기 파싱 ──
@@ -436,7 +432,6 @@ document.addEventListener('paste', e => {
 
 /* ── 단가 탭 ── */
 function syncPriceTab() {
-  collectPrices();
   const ing = new Set(), sup = new Set();
   state.products.forEach(p => {
     p.ingredients.forEach(r => { if (r.name.trim()) ing.add(r.name.trim()); });
@@ -451,8 +446,8 @@ function syncPriceTab() {
       const ex = state.prices[nm] || {};
       return `<tr data-name="${esc(nm)}">
         <td style="font-weight:500">${esc(nm)}</td>
-        <td><input class="unit-inp" type="number" value="${ex.unit || ''}" placeholder="1000" min="0" style="text-align:right"></td>
-        <td><input class="price-inp" type="number" value="${ex.price || ''}" placeholder="0" min="0" style="text-align:right"></td>
+        <td><input class="unit-inp" type="number" value="${ex.unit > 0 ? ex.unit : ''}" placeholder="1000" min="0" style="text-align:right"></td>
+        <td><input class="price-inp" type="number" value="${ex.price > 0 ? ex.price : ''}" placeholder="0" min="0" style="text-align:right"></td>
       </tr>`;
     }).join('');
   };
@@ -597,11 +592,9 @@ function updateCard(pid) {
   ].filter(r => r.name.trim() && r.weight > 0);
 
   let totalW = 0, totalC = 0;
-  console.log('[updateCard] state.prices:', JSON.stringify(state.prices));
   const rows = allRows.map(r => {
     const scaledW = r.weight * ratio;
     const pd = state.prices[r.name] || {};
-    console.log('[updateCard] r.name="'+r.name+'", pd='+JSON.stringify(pd));
     const hasPrice = pd.unit > 0 && pd.price > 0;
     const cost = hasPrice ? (scaledW / pd.unit) * pd.price : 0;
     totalW += scaledW; totalC += cost;
