@@ -1,6 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   collection,
+  deleteDoc,
   deleteField,
   doc,
   serverTimestamp,
@@ -184,6 +185,21 @@ export function useRegisterRecipe(uid: string | undefined) {
       })
       await batch.commit()
       return recipeRef.id
+    },
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: draftsQueryKey }),
+  })
+}
+
+// 레시피 삭제. recipeDrafts/{uid}/items/{draftId} 문서 제거.
+export function useDeleteRecipeDraft(uid: string | undefined) {
+  const queryClient = useQueryClient()
+  const draftsQueryKey = ['recipeDrafts', uid]
+
+  return useMutation({
+    mutationFn: async (draftId: string) => {
+      if (!uid) throw new Error('로그인이 필요합니다.')
+      await deleteDoc(draftRef(uid, draftId))
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: draftsQueryKey }),

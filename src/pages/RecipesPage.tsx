@@ -10,9 +10,12 @@ import {
   type DraftSpeciesFilter,
   type DraftStatusFilter,
 } from '../features/recipes/filterDrafts'
-import { useClearMergeReview } from '../features/recipes/recipeMutations'
+import {
+  useClearMergeReview,
+  useDeleteRecipeDraft,
+} from '../features/recipes/recipeMutations'
 import { useRecipeDrafts } from '../features/recipes/recipeQueries'
-import { CARD_CLS, EMPTY_STATE_CLS, INPUT_CLS } from '../lib/ui'
+import { CARD_CLS, EMPTY_STATE_CLS, INPUT_CLS, SECONDARY_BTN_CLS } from '../lib/ui'
 import { useAuthStore } from '../stores/authStore'
 import type { RecipeCategory } from '../types/recipe'
 
@@ -63,7 +66,9 @@ export function RecipesPage() {
   const uid = useAuthStore((state) => state.user?.uid)
   const { data, error, isError, isLoading } = useRecipeDrafts(uid)
   const clearMergeReview = useClearMergeReview(uid)
+  const deleteDraft = useDeleteRecipeDraft(uid)
   const [filter, setFilter] = useState<DraftFilter>(DEFAULT_FILTER)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
 
   const drafts = data ?? EMPTY_DRAFTS
   const counts = useMemo(() => countBySpecies(drafts), [drafts])
@@ -206,6 +211,7 @@ export function RecipesPage() {
                   <th className="px-3 py-1.5">카테고리</th>
                   <th className="px-3 py-1.5">상태</th>
                   <th className="px-3 py-1.5 text-right">구성 원료</th>
+                  <th className="px-3 py-1.5"></th>
                 </tr>
               </thead>
               <tbody>
@@ -244,10 +250,55 @@ export function RecipesPage() {
                     <td className="px-3 py-1.5 text-right">
                       {draft.composition.length}
                     </td>
+                    <td className="px-3 py-1.5">
+                      <button
+                        className="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-50 hover:text-red-600"
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          setDeleteTarget({ id: draft.id, name: draft.name })
+                        }}
+                        type="button"
+                      >
+                        삭제
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
             </table>
+          </div>
+        </div>
+      )}
+
+      {/* 삭제 확인 모달 */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="w-80 rounded-xl bg-white p-5 shadow-lg">
+            <h2 className="text-sm font-semibold text-gray-800">레시피 삭제</h2>
+            <p className="mt-2 text-sm text-gray-600">
+              <span className="font-medium text-gray-900">{deleteTarget.name}</span>을(를) 삭제합니다.
+              <br />삭제하면 복구할 수 없습니다.
+            </p>
+            <div className="mt-4 flex justify-end gap-2">
+              <button
+                className={SECONDARY_BTN_CLS}
+                onClick={() => setDeleteTarget(null)}
+                type="button"
+              >
+                취소
+              </button>
+              <button
+                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
+                disabled={deleteDraft.isPending}
+                onClick={async () => {
+                  await deleteDraft.mutateAsync(deleteTarget.id)
+                  setDeleteTarget(null)
+                }}
+                type="button"
+              >
+                삭제
+              </button>
+            </div>
           </div>
         </div>
       )}

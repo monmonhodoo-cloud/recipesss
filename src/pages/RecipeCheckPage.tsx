@@ -95,6 +95,7 @@ export function RecipeCheckPage() {
               <option value="">— 선택 —</option>
               {activeDrafts.map((d) => (
                 <option key={d.id} value={d.id}>
+                  {d.species === 'cat' ? '[고양이] ' : d.species === 'dog' ? '[강아지] ' : ''}
                   {d.name}
                   {d.category ? ` (${d.category})` : ''}
                 </option>
