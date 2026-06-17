@@ -19,8 +19,8 @@ export function RecipeCheckPage() {
   )
 
   const [selectedId, setSelectedId] = useState<string>('')
-  // 생산단위 원료의 목표 중량 (kg)
-  const [targetKg, setTargetKg] = useState<number>(1)
+  // 생산단위 수 (마리 등)
+  const [unitCount, setUnitCount] = useState<number>(1)
 
   const draft = useMemo(
     () => activeDrafts.find((d) => d.id === selectedId) ?? null,
@@ -49,12 +49,7 @@ export function RecipeCheckPage() {
     [draft, ingMap],
   )
 
-  // 스케일 = 목표(g) / 단위원료 1단위(g)
-  const scale = useMemo(() => {
-    if (!unitIngRow || unitIngRow.weight <= 0) return 1
-    const targetG = targetKg * 1000
-    return targetG / unitIngRow.weight
-  }, [unitIngRow, targetKg])
+  const scale = unitCount > 0 ? unitCount : 1
 
   const rows = useMemo(() => {
     if (!draft) return []
@@ -80,11 +75,6 @@ export function RecipeCheckPage() {
     return `${g % 1 === 0 ? g : g.toFixed(1)} g`
   }
 
-  // 단위수 표시 (소수점 1자리)
-  const unitCount = unitIngRow && unitIngRow.weight > 0
-    ? (targetKg * 1000) / unitIngRow.weight
-    : 0
-
   return (
     <div className="space-y-4 p-4">
       <h1 className="text-base font-semibold text-gray-800">레시피 확인</h1>
@@ -99,7 +89,7 @@ export function RecipeCheckPage() {
               value={selectedId}
               onChange={(e) => {
                 setSelectedId(e.target.value)
-                setTargetKg(1)
+                setUnitCount(1)
               }}
             >
               <option value="">— 선택 —</option>
@@ -113,23 +103,25 @@ export function RecipeCheckPage() {
           </div>
 
           {draft && (
-            <div className="w-44">
+            <div className="w-36">
               <label className="mb-1 block text-xs text-gray-500">
-                {unitIngName} 목표 중량 (kg)
+                생산 수량{draft.unitLabel ? ` (${draft.unitLabel})` : ''}
               </label>
               <div className="flex items-center gap-1.5">
                 <input
                   className={INPUT_CLS}
                   type="number"
-                  min={0.001}
-                  step={0.5}
-                  value={targetKg}
+                  min={1}
+                  step={1}
+                  value={unitCount}
                   onChange={(e) => {
-                    const v = parseFloat(e.target.value)
-                    setTargetKg(Number.isFinite(v) && v > 0 ? v : 1)
+                    const v = parseInt(e.target.value, 10)
+                    setUnitCount(Number.isFinite(v) && v > 0 ? v : 1)
                   }}
                 />
-                <span className="shrink-0 text-sm text-gray-500">kg</span>
+                {draft.unitLabel && (
+                  <span className="shrink-0 text-sm text-gray-500">{draft.unitLabel}</span>
+                )}
               </div>
             </div>
           )}
@@ -139,8 +131,7 @@ export function RecipeCheckPage() {
         {draft && unitIngRow && (
           <p className="mt-2 text-xs text-gray-400">
             생산단위 기준 원료: <span className="font-medium text-gray-600">{unitIngName}</span>
-            {' '}(1단위 {fmtG(unitIngRow.weight)})
-            {draft.unitLabel ? ` — ${unitIngName} ${targetKg}kg = 약 ${unitCount % 1 === 0 ? unitCount : unitCount.toFixed(1)}${draft.unitLabel}` : ''}
+            {' '}(1{draft.unitLabel ? draft.unitLabel : '단위'} = {fmtG(unitIngRow.weight)})
           </p>
         )}
       </div>
@@ -154,7 +145,7 @@ export function RecipeCheckPage() {
                 <th className="px-3 py-2 text-left font-medium">원료</th>
                 <th className="px-3 py-2 text-right font-medium">1단위 중량</th>
                 <th className="px-3 py-2 text-right font-medium">
-                  {unitIngName} {targetKg}kg 기준 합계
+                  {unitCount}{draft.unitLabel ? draft.unitLabel : '단위'} 합계
                 </th>
               </tr>
             </thead>
