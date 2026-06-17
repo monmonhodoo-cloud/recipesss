@@ -24,10 +24,11 @@ describe('navigation', () => {
     expect(orderGroup!.items.map((i) => i.path)).not.toContain('/presets')
   })
 
-  it('레시피 그룹은 2페이지 (신규·목록)', () => {
+  it('레시피 그룹은 3페이지 (신규·목록·확인)', () => {
     const recipeGroup = navigationGroups.find((g) => g.id === 'recipes')
     expect(recipeGroup).toBeDefined()
-    expect(recipeGroup!.items).toHaveLength(2)
+    expect(recipeGroup!.items).toHaveLength(3)
+    expect(recipeGroup!.items.map((i) => i.path)).toContain('/recipe-check')
   })
 
   it('단가 메뉴는 별도 그룹으로 분리 (DL-024)', () => {

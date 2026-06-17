@@ -1,5 +1,6 @@
 import {
   ChefHat,
+  ClipboardList,
   Database,
   Gauge,
   ListChecks,
@@ -43,6 +44,7 @@ export const navigationGroups: NavigationGroup[] = [
     items: [
       item(ChefHat, '신규 레시피', '/recipes/new'),
       item(ListChecks, '레시피 목록', '/recipes'),
+      item(ClipboardList, '레시피 확인', '/recipe-check'),
     ],
   },
   {

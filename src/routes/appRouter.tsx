@@ -9,6 +9,7 @@ import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { RecipeNewPage } from '../pages/RecipeNewPage'
 import { PrintPageLazy } from '../pages/PrintPageLazy'
+import { RecipeCheckPage } from '../pages/RecipeCheckPage'
 import { RecipesPage } from '../pages/RecipesPage'
 import { SettingsPage } from '../pages/SettingsPage'
 
@@ -45,6 +46,10 @@ export const appRouter = createBrowserRouter([
           {
             path: '/recipes/:draftId',
             element: <RecipeDetailPage />,
+          },
+          {
+            path: '/recipe-check',
+            element: <RecipeCheckPage />,
           },
           {
             path: '/ingredients',

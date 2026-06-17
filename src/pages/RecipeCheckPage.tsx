@@ -1,0 +1,146 @@
+import { useMemo, useState } from 'react'
+
+import { useIngredients } from '../features/ingredients/ingredientQueries'
+import { useRecipeDrafts } from '../features/recipes/recipeQueries'
+import { CARD_CLS, INPUT_CLS } from '../lib/ui'
+import { useAuthStore } from '../stores/authStore'
+import type { RecipeDraft } from '../types/recipe'
+
+const EMPTY_DRAFTS: RecipeDraft[] = []
+
+export function RecipeCheckPage() {
+  const uid = useAuthStore((s) => s.user?.uid)
+  const { data: drafts = EMPTY_DRAFTS } = useRecipeDrafts(uid)
+  const { data: ingredients = [] } = useIngredients(uid)
+
+  const activeDrafts = useMemo(
+    () => drafts.filter((d) => d.status !== 'inactive'),
+    [drafts],
+  )
+
+  const [selectedId, setSelectedId] = useState<string>('')
+  const [units, setUnits] = useState<number>(1)
+
+  const draft = useMemo(
+    () => activeDrafts.find((d) => d.id === selectedId) ?? null,
+    [activeDrafts, selectedId],
+  )
+
+  const ingMap = useMemo(
+    () => new Map(ingredients.map((i) => [i.id, i])),
+    [ingredients],
+  )
+
+  const rows = useMemo(() => {
+    if (!draft) return []
+    const n = units > 0 ? units : 1
+    return draft.composition.map((row) => {
+      const ing = ingMap.get(row.ingredientId)
+      const baseG = row.weight // 항상 g
+      const totalG = baseG * n
+      return {
+        name: ing?.name ?? row.ingredientId,
+        baseG,
+        totalG,
+      }
+    })
+  }, [draft, units, ingMap])
+
+  const totalG = useMemo(() => rows.reduce((s, r) => s + r.totalG, 0), [rows])
+
+  function fmtG(g: number) {
+    if (g >= 1000) return `${(g / 1000).toFixed(3)} kg`
+    return `${g % 1 === 0 ? g : g.toFixed(1)} g`
+  }
+
+  return (
+    <div className="space-y-4 p-4">
+      <h1 className="text-base font-semibold text-gray-800">레시피 확인</h1>
+
+      {/* 레시피 선택 + 생산단위 */}
+      <div className={`${CARD_CLS} p-3`}>
+        <div className="flex flex-wrap items-end gap-3">
+          <div className="flex-1 min-w-40">
+            <label className="mb-1 block text-xs text-gray-500">레시피</label>
+            <select
+              className={INPUT_CLS}
+              value={selectedId}
+              onChange={(e) => setSelectedId(e.target.value)}
+            >
+              <option value="">— 선택 —</option>
+              {activeDrafts.map((d) => (
+                <option key={d.id} value={d.id}>
+                  {d.name}
+                  {d.category ? ` (${d.category})` : ''}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div className="w-36">
+            <label className="mb-1 block text-xs text-gray-500">
+              생산단위 수{draft?.unitLabel ? ` (${draft.unitLabel})` : ''}
+            </label>
+            <input
+              className={INPUT_CLS}
+              type="number"
+              min={1}
+              step={1}
+              value={units}
+              onChange={(e) => {
+                const v = parseInt(e.target.value, 10)
+                setUnits(Number.isFinite(v) && v > 0 ? v : 1)
+              }}
+            />
+          </div>
+        </div>
+      </div>
+
+      {/* 원료 중량 테이블 */}
+      {draft && (
+        <div className={`${CARD_CLS} overflow-x-auto`}>
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50 text-xs text-gray-500">
+              <tr>
+                <th className="px-3 py-2 text-left font-medium">원료</th>
+                <th className="px-3 py-2 text-right font-medium">1단위 중량</th>
+                <th className="px-3 py-2 text-right font-medium">
+                  {units}
+                  {draft.unitLabel ? ` ${draft.unitLabel}` : '단위'} 합계
+                </th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {rows.map((r, i) => (
+                <tr key={i} className="hover:bg-gray-50">
+                  <td className="px-3 py-1.5 text-gray-800">{r.name}</td>
+                  <td className="px-3 py-1.5 text-right tabular-nums text-gray-600">
+                    {fmtG(r.baseG)}
+                  </td>
+                  <td className="px-3 py-1.5 text-right tabular-nums font-medium text-gray-800">
+                    {fmtG(r.totalG)}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot className="bg-gray-50 text-xs font-semibold">
+              <tr>
+                <td className="px-3 py-2 text-gray-700">합계</td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-600">
+                  {fmtG(rows.reduce((s, r) => s + r.baseG, 0))}
+                </td>
+                <td className="px-3 py-2 text-right tabular-nums text-gray-800">
+                  {fmtG(totalG)}
+                </td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      )}
+
+      {!draft && selectedId === '' && (
+        <p className="text-sm text-gray-400">레시피를 선택하면 중량이 표시됩니다.</p>
+      )}
+    </div>
+  )
+}
