@@ -15,7 +15,7 @@ import {
   type OrderGroup,
   type OrderSelection,
 } from '../features/orders/orderSelectors'
-import { useSaveOrder } from '../features/orders/orderStorage'
+import { useSavedOrders, useSaveOrder } from '../features/orders/orderStorage'
 import { normalizeAllPresetCodes } from '../features/presets/presetCodes'
 import { useApplyDraftPresets } from '../features/presets/presetMutations'
 import { backfillPresetInputs } from '../features/presets/presetRatio'
@@ -24,6 +24,7 @@ import { useRecipeDrafts } from '../features/recipes/recipeQueries'
 import {
   CARD_CLS,
   EMPTY_STATE_CLS,
+  INPUT_CLS,
   PRIMARY_BTN_CLS,
   SECONDARY_BTN_CLS,
 } from '../lib/ui'
@@ -51,6 +52,8 @@ export function OrdersPage() {
   })
   const applyPresets = useApplyDraftPresets(uid)
   const saveOrder = useSaveOrder(uid)
+  const savedOrdersQuery = useSavedOrders(uid)
+  const savedOrders = savedOrdersQuery.data ?? []
   const [selection, setSelection] = useState<OrderSelection>({})
   const [filter, setFilter] = useState<OrderFilter>('all')
   const [normalizeMsg, setNormalizeMsg] = useState('')
@@ -242,6 +245,35 @@ export function OrdersPage() {
               )}
 
               <div className="space-y-2 border-t border-gray-100 p-4">
+                {/* 저장된 발주 불러오기 */}
+                {savedOrders.length > 0 && (
+                  <div className="space-y-1">
+                    <p className="text-xs text-gray-400">저장된 발주 불러오기</p>
+                    <select
+                      className={`${INPUT_CLS} text-xs`}
+                      defaultValue=""
+                      onChange={(e) => {
+                        const orderId = e.target.value
+                        if (!orderId) return
+                        const order = savedOrders.find((o) => o.id === orderId)
+                        if (!order) return
+                        const next: OrderSelection = {}
+                        order.presetIds.forEach((id) => { next[id] = true })
+                        setSelection(next)
+                        setSaveMsg(`${order.date} 발주 불러옴 (${order.presetIds.length}개 체크됨)`)
+                        e.target.value = ''
+                      }}
+                    >
+                      <option value="">— 선택 —</option>
+                      {savedOrders.map((o) => (
+                        <option key={o.id} value={o.id}>
+                          {o.date} · {o.presetIds.length}개
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
                 <button
                   className={`${PRIMARY_BTN_CLS} w-full`}
                   disabled={selectedCount === 0}
@@ -264,7 +296,7 @@ export function OrdersPage() {
                       })
                       .then((order) =>
                         setSaveMsg(
-                          `${order.date} 발주 저장됨 — PDF 출력에서 선택해 재출력`,
+                          `${order.date} 발주 저장됨 — PDF 출력에서 재출력`,
                         ),
                       )
                       .catch((err: unknown) =>
