@@ -132,8 +132,8 @@ describe('buildOutputOne', () => {
     expect(groups[0]?.name).toBe('(고양이)치킨')
     // 코드순 정렬 (A0, A1) + A1은 투입량 괄호
     expect(groups[0]?.columns).toEqual([
-      { header: 'A0', eggshell: '20g' },
-      { header: 'A1 (4)', eggshell: '40g' },
+      { header: 'A0', eggshell: '20.0g' },
+      { header: 'A1 (4)', eggshell: '40.0g' },
     ])
   })
 })
@@ -143,20 +143,20 @@ describe('buildOutputTwo', () => {
     const views = buildPresetPrintViews(['p0', 'p1'], presets, drafts, ingredients)
     const output = buildOutputTwo(views)
 
-    expect(output.eggshellWeights).toEqual(['40g', '20g'])
+    expect(output.eggshellWeights).toEqual(['40.0g', '20.0g'])
     expect(output.aliasGroups).toHaveLength(1)
     const group = output.aliasGroups[0]!
     expect(group.name).toBe('A')
     expect(group.codes).toEqual(['A0', 'A1'])
     // 치환명 있는 비타민E(하늘)만, 난각분·치환명 없는 타우린은 제외
-    expect(group.rows).toEqual([{ displayName: '하늘', weights: ['10g', '20g'] }])
+    expect(group.rows).toEqual([{ displayName: '하늘', weights: ['10.0g', '20.0g'] }])
   })
 })
 
 describe('formatters', () => {
   it('fmtPrint rounds to 2 decimals with locale separators', () => {
     expect(fmtPrint(1234.567)).toBe('1,234.57')
-    expect(fmtPrint(1000)).toBe('1,000')
+    expect(fmtPrint(1000)).toBe('1,000') // 정수는 정수 그대로 (헤더용)
   })
 
   it('formatCodeWithInput appends inputAmount only when positive', () => {

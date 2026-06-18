@@ -1,3 +1,4 @@
+import { getPresetRatioInfo } from '../presets/presetRatio'
 import type { Ingredient, Preset, RecipeDraft } from '../../types/recipe'
 
 // 단계 4 출력 1·2 데이터 (v2 ui-tab-preview.js 충실 포팅, SPEC §5.7).
@@ -20,7 +21,7 @@ export type PresetPrintView = {
   supplements: PrintSupplementRow[]
 }
 
-// v2 fmt: 소수 2자리 반올림 + 천단위 구분.
+// v2 fmt: 소수 2자리 반올림 + 천단위 구분 (헤더·코드용, 정수는 정수로).
 export function fmtPrint(num: number): string {
   const value = Math.round((Number(num) || 0) * 100) / 100
   return value % 1 === 0
@@ -31,8 +32,17 @@ export function fmtPrint(num: number): string {
       })
 }
 
+// 중량 포맷: 최소 소수점 1자리 보장 (0.0g ~ xx.xxg).
+function fmtWeight(num: number): string {
+  const value = Math.round((Number(num) || 0) * 100) / 100
+  return value.toLocaleString(undefined, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  })
+}
+
 export function formatWeight(value: number): string {
-  return Number(value) > 0 ? `${fmtPrint(value)}g` : ''
+  return Number(value) > 0 ? `${fmtWeight(value)}g` : ''
 }
 
 // 출력1 헤더: 코드 옆 생산단위 투입량 괄호 (예: A2 (25)).
@@ -47,12 +57,17 @@ function productLabel(draft: RecipeDraft): string {
   return `${prefix}${draft.name || ''}`
 }
 
-// v2 getPresetRatio: targetWeight / 단위원료 weight.
+// inputAmount 우선 (J0처럼 targetWeight 미설정/오설정 대비).
+// inputAmount 없으면 targetWeight/unitRow.weight fallback (구버전 호환).
 function presetRatio(preset: Preset, draft: RecipeDraft): number {
   const unitIngId = preset.unitIngredientId || draft.unitIngredientId
+  if (Number(preset.inputAmount) > 0) {
+    const info = getPresetRatioInfo(draft, unitIngId, Number(preset.inputAmount))
+    if (info.hasInput) return info.ratio
+  }
   const unitRow = draft.composition.find((row) => row.ingredientId === unitIngId)
   if (!unitRow || !unitRow.weight) return 1
-  return preset.targetWeight / unitRow.weight
+  return (Number(preset.targetWeight) || 0) / unitRow.weight
 }
 
 export function buildPresetPrintViews(
@@ -173,7 +188,7 @@ export function buildOutputTwo(views: PresetPrintView[]): OutputTwo {
     .map(eggshellWeight)
     .filter((weight) => weight > 0)
     .sort((a, b) => b - a)
-    .map((weight) => `${fmtPrint(weight)}g`)
+    .map((weight) => `${fmtWeight(weight)}g`)
 
   const groupMap = new Map<string, PresetPrintView[]>()
   for (const view of views) {
