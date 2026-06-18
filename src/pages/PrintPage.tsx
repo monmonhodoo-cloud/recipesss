@@ -76,8 +76,8 @@ export function PrintPage() {
   const fileDate = orderDate ?? today
   const fileName =
     tab === 'view1'
-      ? `${fileDate} 영양제-대표용.pdf`
-      : `${fileDate} 영양제-직원전달용.pdf`
+      ? `${fileDate} 영양제_대표.pdf`
+      : `${fileDate} 영양제_직원.pdf`
 
   return (
     <div>
