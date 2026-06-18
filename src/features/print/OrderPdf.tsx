@@ -28,9 +28,13 @@ const styles = StyleSheet.create({
     padding: 28,
     color: '#111827',
   },
+  // borderBottom 없음 — 마지막 행 td.borderBottom이 테이블 하단 역할.
+  // border 단축 + 마지막행 td borderBottom:0 조합은 @react-pdf에서 행 높이 불일치 발생.
   table: {
     marginBottom: 14,
-    border: BORDER,
+    borderTop: BORDER,
+    borderLeft: BORDER,
+    borderRight: BORDER,
   },
   row: { flexDirection: 'row' },
   titleCell: {
@@ -41,8 +45,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 6,
     textAlign: 'center',
   },
-  // 셀은 9pt + 좁은 패딩 — 52pt 열에 "B5 (140)" 같은 헤더가 한 줄로 들어가야
-  // 행 높이가 고르게 유지된다 (줄바꿈되면 표가 깨져 보임).
   th: {
     backgroundColor: '#f9fafb',
     borderBottom: BORDER,
@@ -71,14 +73,13 @@ const styles = StyleSheet.create({
   groupBlock: { marginBottom: 12 },
 })
 
-// 마지막 셀 우측 보더 제거용 (단일 Style로 머지)
+// 마지막 셀 우측 보더 제거용
 function cellStyle(base: Style, isLast: boolean, extra?: Style): Style {
   return { ...base, ...(isLast ? { borderRight: 0 } : {}), ...extra }
 }
 
 // ---------- 출력 1: 제품별 난각분 표 ----------
 
-// 열 수에 비례한 고정폭 → 작은 표(프리셋 2~3개)는 좌우로 나란히 배치.
 const OUT1_LABEL_W = 50
 const OUT1_COL_W = 52
 
@@ -114,7 +115,7 @@ export function OrderPdf1({ groups }: { groups: OutputOneGroup[] }) {
                 </View>
                 <View style={styles.row}>
                   <Text
-                    style={cellStyle({ ...styles.td, borderBottom: 0 }, false, {
+                    style={cellStyle(styles.td, false, {
                       width: OUT1_LABEL_W,
                       textAlign: 'left',
                     })}
@@ -124,11 +125,9 @@ export function OrderPdf1({ groups }: { groups: OutputOneGroup[] }) {
                   {group.columns.map((column, index) => (
                     <Text
                       key={index}
-                      style={cellStyle(
-                        { ...styles.td, borderBottom: 0 },
-                        index === cols - 1,
-                        { width: OUT1_COL_W },
-                      )}
+                      style={cellStyle(styles.td, index === cols - 1, {
+                        width: OUT1_COL_W,
+                      })}
                     >
                       {column.eggshell}
                     </Text>
@@ -155,13 +154,7 @@ export function OrderPdf2({ output }: { output: OutputTwo }) {
             {output.eggshellWeights.map((weight, index) => (
               <Text
                 key={index}
-                style={[
-                  styles.td,
-                  { borderRight: 0 },
-                  index === output.eggshellWeights.length - 1
-                    ? { borderBottom: 0 }
-                    : {},
-                ]}
+                style={[styles.td, { borderRight: 0 }]}
               >
                 {weight}
               </Text>
@@ -198,36 +191,28 @@ export function OrderPdf2({ output }: { output: OutputTwo }) {
                       </Text>
                     ))}
                   </View>
-                  {group.rows.map((row, rowIndex) => {
-                    const isLastRow = rowIndex === group.rows.length - 1
-                    return (
-                      <View key={row.displayName} style={styles.row}>
+                  {group.rows.map((row) => (
+                    <View key={row.displayName} style={styles.row}>
+                      <Text
+                        style={cellStyle(styles.td, false, {
+                          width: labelW,
+                          textAlign: 'left',
+                        })}
+                      >
+                        {row.displayName}
+                      </Text>
+                      {row.weights.map((weight, index) => (
                         <Text
-                          style={cellStyle(
-                            isLastRow ? { ...styles.td, borderBottom: 0 } : styles.td,
-                            false,
-                            { width: labelW, textAlign: 'left' },
-                          )}
+                          key={index}
+                          style={cellStyle(styles.td, index === cols - 1, {
+                            width: colW,
+                          })}
                         >
-                          {row.displayName}
+                          {weight}
                         </Text>
-                        {row.weights.map((weight, index) => (
-                          <Text
-                            key={index}
-                            style={cellStyle(
-                              isLastRow
-                                ? { ...styles.td, borderBottom: 0 }
-                                : styles.td,
-                              index === cols - 1,
-                              { width: colW },
-                            )}
-                          >
-                            {weight}
-                          </Text>
-                        ))}
-                      </View>
-                    )
-                  })}
+                      ))}
+                    </View>
+                  ))}
                 </View>
               </View>
             )
