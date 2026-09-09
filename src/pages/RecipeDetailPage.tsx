@@ -1,7 +1,8 @@
 import { useMemo, useState } from 'react'
-import { Link, useParams } from 'react-router-dom'
+import { Link, useNavigate, useParams } from 'react-router-dom'
 
 import { CompositionEditor } from '../components/CompositionEditor'
+import { DeleteRecipeDialog } from '../components/DeleteRecipeDialog'
 import { RecipeNutritionPanel } from '../components/RecipeNutritionPanel'
 import { useIngredients } from '../features/ingredients/ingredientQueries'
 import {
@@ -45,6 +46,8 @@ function newPresetId(): string {
 }
 
 export function RecipeDetailPage() {
+  const navigate = useNavigate()
+  const [confirmDelete, setConfirmDelete] = useState(false)
   const { draftId } = useParams<{ draftId: string }>()
   const uid = useAuthStore((state) => state.user?.uid)
   const draftsQuery = useRecipeDrafts(uid)
@@ -74,6 +77,15 @@ export function RecipeDetailPage() {
         >
           ← 레시피 목록
         </Link>
+        {!isLoading && draft && (
+          <button
+            className="rounded-md px-3 py-2 text-sm text-red-600 hover:bg-red-50"
+            onClick={() => setConfirmDelete(true)}
+            type="button"
+          >
+            레시피 삭제
+          </button>
+        )}
       </div>
 
       {isLoading && (
@@ -106,6 +118,10 @@ export function RecipeDetailPage() {
           <CompositionEditor
             draft={draft}
             ingredients={ingredients}
+            isRefreshingIngredients={ingredientsQuery.isFetching}
+            onRefreshIngredients={() => {
+              void ingredientsQuery.refetch()
+            }}
             uid={uid}
           />
 
@@ -116,6 +132,14 @@ export function RecipeDetailPage() {
             drafts={drafts}
             uid={uid}
           />
+          {confirmDelete && (
+            <DeleteRecipeDialog
+              draft={draft}
+              uid={uid}
+              onClose={() => setConfirmDelete(false)}
+              onDeleted={() => navigate('/recipes', { replace: true })}
+            />
+          )}
         </>
       )}
     </div>
@@ -356,7 +380,6 @@ function RecipeHeaderEditor({
   const [category, setCategory] = useState<RecipeCategory | ''>(
     draft.category ?? '',
   )
-  const [status, setStatus] = useState<RecipeDraft['status']>(draft.status)
   const [formKey, setFormKey] = useState(draft.id)
   const [errorMsg, setErrorMsg] = useState('')
 
@@ -365,7 +388,6 @@ function RecipeHeaderEditor({
     setName(draft.name)
     setSpecies(draft.species)
     setCategory(draft.category ?? '')
-    setStatus(draft.status)
     setErrorMsg('')
   }
 
@@ -381,7 +403,6 @@ function RecipeHeaderEditor({
         name: name.trim(),
         species,
         category: category === '' ? undefined : category,
-        status,
         now: Date.now(),
       })
     } catch (err) {
@@ -440,21 +461,6 @@ function RecipeHeaderEditor({
               </option>
             ))}
             <option value="">미분류</option>
-          </select>
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-gray-500">
-            상태
-          </span>
-          <select
-            className={INPUT_CLS}
-            onChange={(event) =>
-              setStatus(event.target.value as RecipeDraft['status'])
-            }
-            value={status}
-          >
-            <option value="draft">임시</option>
-            <option value="inactive">비활성</option>
           </select>
         </label>
         <button

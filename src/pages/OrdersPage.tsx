@@ -5,7 +5,9 @@ import { PreparationProduct } from '../components/PreparationProduct'
 import { useIngredients } from '../features/ingredients/ingredientQueries'
 import {
   filterOrderGroups,
+  formatPresetInput,
   groupPresetsByRecipe,
+  speciesLabel,
   type OrderFilter,
 } from '../features/orders/orderSelectors'
 import {
@@ -71,12 +73,7 @@ export function OrdersPage() {
   )
   const selected = useMemo(() => new Set(ids), [ids])
   const groups = useMemo(
-    () =>
-      groupPresetsByRecipe(
-        drafts.filter((draft) => draft.status !== 'inactive'),
-        presets,
-        true,
-      ),
+    () => groupPresetsByRecipe(drafts, presets, true),
     [drafts, presets],
   )
   const visibleGroups = filterOrderGroups(groups, filter).filter(
@@ -207,13 +204,23 @@ export function OrdersPage() {
         </button>
       </div>
       <div className="prep-outputbar">
-        <div>
+        <div className="prep-selection">
           <p className="prep-count" aria-live="polite">
             프리셋 <strong>{ids.length}개</strong> 선택{' '}
             <span>
               · 제품 {new Set(views.map((view) => view.draft.id)).size}개
             </span>
           </p>
+          {views.length > 0 && (
+            <p className="prep-selected-presets" aria-label="선택한 프리셋">
+              {views
+                .map(
+                  ({ draft, preset }) =>
+                    `${draft.name} ${formatPresetInput(preset)} (${speciesLabel(draft.species)})`,
+                )
+                .join(' · ')}
+            </p>
+          )}
           <button
             type="button"
             className="prep-textbutton"
@@ -282,11 +289,27 @@ export function OrdersPage() {
             <p key={issue}>{issue}</p>
           ))}
           <Link to="/recipes">레시피 관리 →</Link>
+          <button
+            className="prep-textbutton ml-3"
+            disabled={
+              draftsQuery.isFetching ||
+              presetsQuery.isFetching ||
+              ingredientsQuery.isFetching
+            }
+            onClick={() => {
+              void draftsQuery.refetch()
+              void presetsQuery.refetch()
+              void ingredientsQuery.refetch()
+            }}
+            type="button"
+          >
+            목록 새로고침
+          </button>
         </div>
       )}
       {missingAliases.length > 0 && (
         <div className="prep-notice">
-          직원용 치환명이 없는 영양제: {missingAliases.join(', ')}.{' '}
+          직원용 치환명이 없는 재료: {missingAliases.join(', ')}.{' '}
           <Link to="/ingredients">치환명 설정 후 직원용 출력 →</Link>
         </div>
       )}

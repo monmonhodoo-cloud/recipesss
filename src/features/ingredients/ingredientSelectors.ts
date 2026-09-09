@@ -1,5 +1,12 @@
 import type { Ingredient, NutrientValues } from '../../types/recipe'
 
+// 명시적 출력 설정은 원료 구분·기존 숨김과 독립적이다. 미설정 데이터만 이전 규칙 사용.
+export function isPreparationIncluded(item: Ingredient): boolean {
+  return (
+    item.includeInPreparation ?? (item.kind === 'supplement' && !item.hidden)
+  )
+}
+
 export type IngredientGroups = {
   ingredient: Ingredient[]
   supplement: Ingredient[]
@@ -21,8 +28,7 @@ export function groupByKind(items: Ingredient[]): IngredientGroups {
 
   // 이름(가나다)순 정렬 — 찾기 쉽게. 동명은 sortOrder로 안정 정렬.
   const sorted = [...items].sort(
-    (a, b) =>
-      a.name.localeCompare(b.name, 'ko') || a.sortOrder - b.sortOrder,
+    (a, b) => a.name.localeCompare(b.name, 'ko') || a.sortOrder - b.sortOrder,
   )
   for (const item of sorted) {
     groups[item.kind].push(item)

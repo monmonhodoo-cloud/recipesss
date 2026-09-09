@@ -25,10 +25,14 @@ type EditRow = {
 export function CompositionEditor({
   draft,
   ingredients,
+  onRefreshIngredients,
+  isRefreshingIngredients = false,
   uid,
 }: {
   draft: RecipeDraft
   ingredients: Ingredient[]
+  onRefreshIngredients?: () => void
+  isRefreshingIngredients?: boolean
   uid: string | undefined
 }) {
   const save = useSaveComposition(uid)
@@ -38,8 +42,7 @@ export function CompositionEditor({
   const sortedIngredients = useMemo(
     () =>
       [...ingredients].sort(
-        (a, b) =>
-          a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name),
+        (a, b) => a.kind.localeCompare(b.kind) || a.name.localeCompare(b.name),
       ),
     [ingredients],
   )
@@ -54,7 +57,7 @@ export function CompositionEditor({
           item.id,
           Boolean(
             item.nutrientProfile &&
-              Object.keys(item.nutrientProfile).length > 0,
+            Object.keys(item.nutrientProfile).length > 0,
           ),
         ]),
       ),
@@ -126,13 +129,17 @@ export function CompositionEditor({
 
     const composition: CompositionRow[] = []
     for (const [index, row] of rows.entries()) {
-      if (!row.ingredientId) {
-        setErrorMsg(`${index + 1}번째 행의 원료를 선택하세요.`)
+      if (!nameById.has(row.ingredientId)) {
+        setErrorMsg(
+          `${index + 1}번째 행의 원료가 연결되지 않았습니다. 원료 목록을 새로고침하거나 다시 선택해주세요.`,
+        )
         return
       }
       const weight = Number(row.weight)
       if (!Number.isFinite(weight) || weight <= 0) {
-        setErrorMsg(`${nameById.get(row.ingredientId) ?? '원료'} 중량이 올바르지 않습니다.`)
+        setErrorMsg(
+          `${nameById.get(row.ingredientId) ?? '원료'} 중량이 올바르지 않습니다.`,
+        )
         return
       }
       composition.push({
@@ -168,7 +175,9 @@ export function CompositionEditor({
     <div className={`mt-4 ${CARD_CLS} p-4`}>
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <h2 className="text-sm font-semibold text-gray-800">구성 원료 편집</h2>
+          <h2 className="text-sm font-semibold text-gray-800">
+            구성 원료 편집
+          </h2>
           <p className="mt-1 text-xs text-gray-500">
             저장하면 확정값은 새 계산값을 따르도록 초기화됩니다 (DL-029).
           </p>
@@ -240,12 +249,18 @@ export function CompositionEditor({
                 </td>
                 <td className="px-2 py-2">
                   <select
+                    aria-label={`${index + 1}번째 원료`}
                     className={CELL_INPUT_CLS}
                     onChange={(event) =>
                       updateRow(index, { ingredientId: event.target.value })
                     }
                     value={row.ingredientId}
                   >
+                    {!nameById.has(row.ingredientId) && (
+                      <option disabled value={row.ingredientId}>
+                        연결된 원료 없음 — 다시 선택하세요
+                      </option>
+                    )}
                     {sortedIngredients.map((ingredient) => (
                       <option key={ingredient.id} value={ingredient.id}>
                         {ingredient.name}
@@ -253,10 +268,28 @@ export function CompositionEditor({
                       </option>
                     ))}
                   </select>
-                  {!hasProfileById.get(row.ingredientId) && (
-                    <span className="mt-0.5 block text-[11px] text-amber-600">
-                      영양값 없음 (매트릭스 미반영)
-                    </span>
+                  {!nameById.has(row.ingredientId) ? (
+                    <div className="mt-1 text-xs text-red-700">
+                      <p>원료 목록에서 찾을 수 없습니다.</p>
+                      {onRefreshIngredients && (
+                        <button
+                          className="mt-1 underline disabled:opacity-50"
+                          disabled={isRefreshingIngredients}
+                          onClick={onRefreshIngredients}
+                          type="button"
+                        >
+                          {isRefreshingIngredients
+                            ? '원료 확인 중…'
+                            : '원료 목록 새로고침'}
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    !hasProfileById.get(row.ingredientId) && (
+                      <span className="mt-0.5 block text-[11px] text-amber-600">
+                        영양값 없음 (매트릭스 미반영)
+                      </span>
+                    )
                   )}
                 </td>
                 <td className="px-2 py-2">

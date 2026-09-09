@@ -133,18 +133,14 @@ export function filterOrderGroups(
   filter: OrderFilter,
 ): OrderGroup[] {
   if (filter === 'all') return groups
-  if (filter === 'cat') {
-    return groups.filter((group) => group.species === 'cat')
-  }
-  if (filter === 'dog') {
-    return groups.filter((group) => group.species === 'dog')
-  }
-
-  return groups.filter((group) =>
-    group.category
+  return groups.filter((group) => {
+    const freezeDried = group.category
       ? group.category === '동결건조' || group.category === '동결텐더'
-      : isFreezeDriedName(group.draftName),
-  )
+      : isFreezeDriedName(group.draftName)
+    return filter === 'freezeDried'
+      ? freezeDried
+      : group.species === filter && !freezeDried
+  })
 }
 
 function isFreezeDriedName(name: string): boolean {

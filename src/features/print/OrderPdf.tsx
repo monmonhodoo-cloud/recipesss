@@ -86,6 +86,7 @@ function cellStyle(base: Style, isLast: boolean, extra?: Style): Style {
 // ---------- 출력 1: 제품별 난각분 표 ----------
 
 const OUT1_LABEL_W = 50
+const PREPARATION_LABEL_W = 110
 const OUT1_COL_W = 52
 // A4(595) - padding(28*2) = 539, gap=12
 const PAGE_USABLE_W = 539
@@ -109,7 +110,9 @@ function groupIntoRows(groups: OutputOneGroup[]): OutputOneGroup[][] {
   let row: OutputOneGroup[] = []
   let usedW = 0
   for (const g of groups) {
-    const w = OUT1_LABEL_W + g.columns.length * OUT1_COL_W
+    const w =
+      (g.rows ? PREPARATION_LABEL_W : OUT1_LABEL_W) +
+      g.columns.length * OUT1_COL_W
     const needed = row.length === 0 ? w : usedW + ROW_GAP + w
     if (needed > PAGE_USABLE_W && row.length > 0) {
       rows.push(row)
@@ -133,7 +136,9 @@ export function OrderPdf1({ groups }: { groups: OutputOneGroup[] }) {
           // 이 row에서 가장 긴 타이틀 기준으로 모든 표의 타이틀 높이 통일
           const maxLines = Math.max(
             ...rowGroups.map((g) => {
-              const tableW = OUT1_LABEL_W + g.columns.length * OUT1_COL_W
+              const tableW =
+                (g.rows ? PREPARATION_LABEL_W : OUT1_LABEL_W) +
+                g.columns.length * OUT1_COL_W
               return estimateTitleLines(g.name, tableW)
             }),
           )
@@ -143,12 +148,19 @@ export function OrderPdf1({ groups }: { groups: OutputOneGroup[] }) {
               key={rowIdx}
               style={[styles.groupsRow, { marginBottom: ROW_GAP }]}
             >
-              {rowGroups.map((group) => {
+              {rowGroups.map((group, groupIndex) => {
                 const cols = group.columns.length
-                const tableW = OUT1_LABEL_W + cols * OUT1_COL_W
+                const labelW = group.rows ? PREPARATION_LABEL_W : OUT1_LABEL_W
+                const tableW = labelW + cols * OUT1_COL_W
+                const ingredientRows = group.rows ?? [
+                  {
+                    name: '난각분',
+                    weights: group.columns.map((column) => column.eggshell),
+                  },
+                ]
                 return (
                   <View
-                    key={group.name}
+                    key={`${group.name}-${groupIndex}`}
                     style={[styles.table, { width: tableW }]}
                     wrap={false}
                   >
@@ -158,7 +170,7 @@ export function OrderPdf1({ groups }: { groups: OutputOneGroup[] }) {
                     <View style={styles.row}>
                       <Text
                         style={cellStyle(styles.th, false, {
-                          width: OUT1_LABEL_W,
+                          width: labelW,
                         })}
                       />
                       {group.columns.map((column, index) => (
@@ -172,26 +184,28 @@ export function OrderPdf1({ groups }: { groups: OutputOneGroup[] }) {
                         </Text>
                       ))}
                     </View>
-                    <View style={styles.row}>
-                      <Text
-                        style={cellStyle(styles.td, false, {
-                          width: OUT1_LABEL_W,
-                          textAlign: 'left',
-                        })}
-                      >
-                        난각분
-                      </Text>
-                      {group.columns.map((column, index) => (
+                    {ingredientRows.map((row, rowIndex) => (
+                      <View key={rowIndex} style={styles.row}>
                         <Text
-                          key={index}
-                          style={cellStyle(styles.td, index === cols - 1, {
-                            width: OUT1_COL_W,
+                          style={cellStyle(styles.td, false, {
+                            width: labelW,
+                            textAlign: 'left',
                           })}
                         >
-                          {column.eggshell}
+                          {row.name}
                         </Text>
-                      ))}
-                    </View>
+                        {row.weights.map((weight, index) => (
+                          <Text
+                            key={index}
+                            style={cellStyle(styles.td, index === cols - 1, {
+                              width: OUT1_COL_W,
+                            })}
+                          >
+                            {weight}
+                          </Text>
+                        ))}
+                      </View>
+                    ))}
                   </View>
                 )
               })}

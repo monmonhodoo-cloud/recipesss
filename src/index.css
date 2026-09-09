@@ -385,10 +385,22 @@ body {
 .prep-outputbar {
   padding: 8px 0;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   gap: 12px;
   flex-wrap: wrap;
+}
+.prep-selection {
+  flex: 1 1 320px;
+  min-width: 0;
+}
+.prep-selected-presets {
+  margin-top: 6px;
+  color: var(--rp-muted);
+  font-size: 12px;
+  line-height: 1.7;
+  word-break: keep-all;
+  overflow-wrap: anywhere;
 }
 .prep-count {
   font-size: 14px;

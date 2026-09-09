@@ -13,18 +13,13 @@ export function RecipeCheckPage() {
   const { data: drafts = EMPTY_DRAFTS } = useRecipeDrafts(uid)
   const { data: ingredients = [] } = useIngredients(uid)
 
-  const activeDrafts = useMemo(
-    () => drafts.filter((d) => d.status !== 'inactive'),
-    [drafts],
-  )
-
   const [selectedId, setSelectedId] = useState<string>('')
   // 생산단위 수 (마리 등)
   const [unitCount, setUnitCount] = useState<number>(1)
 
   const draft = useMemo(
-    () => activeDrafts.find((d) => d.id === selectedId) ?? null,
-    [activeDrafts, selectedId],
+    () => drafts.find((d) => d.id === selectedId) ?? null,
+    [drafts, selectedId],
   )
 
   const ingMap = useMemo(
@@ -67,7 +62,10 @@ export function RecipeCheckPage() {
     })
   }, [draft, scale, ingMap])
 
-  const totalBaseG = useMemo(() => rows.reduce((s, r) => s + r.baseG, 0), [rows])
+  const totalBaseG = useMemo(
+    () => rows.reduce((s, r) => s + r.baseG, 0),
+    [rows],
+  )
   const totalG = useMemo(() => rows.reduce((s, r) => s + r.totalG, 0), [rows])
 
   function fmtG(g: number) {
@@ -93,9 +91,13 @@ export function RecipeCheckPage() {
               }}
             >
               <option value="">— 선택 —</option>
-              {activeDrafts.map((d) => (
+              {drafts.map((d) => (
                 <option key={d.id} value={d.id}>
-                  {d.species === 'cat' ? '[고양이] ' : d.species === 'dog' ? '[강아지] ' : ''}
+                  {d.species === 'cat'
+                    ? '[고양이] '
+                    : d.species === 'dog'
+                      ? '[강아지] '
+                      : ''}
                   {d.name}
                   {d.category ? ` (${d.category})` : ''}
                 </option>
@@ -121,7 +123,9 @@ export function RecipeCheckPage() {
                   }}
                 />
                 {draft.unitLabel && (
-                  <span className="shrink-0 text-sm text-gray-500">{draft.unitLabel}</span>
+                  <span className="shrink-0 text-sm text-gray-500">
+                    {draft.unitLabel}
+                  </span>
                 )}
               </div>
             </div>
@@ -131,8 +135,10 @@ export function RecipeCheckPage() {
         {/* 생산단위 정보 */}
         {draft && unitIngRow && (
           <p className="mt-2 text-xs text-gray-400">
-            생산단위 기준 원료: <span className="font-medium text-gray-600">{unitIngName}</span>
-            {' '}(1{draft.unitLabel ? draft.unitLabel : '단위'} = {fmtG(unitIngRow.weight)})
+            생산단위 기준 원료:{' '}
+            <span className="font-medium text-gray-600">{unitIngName}</span> (1
+            {draft.unitLabel ? draft.unitLabel : '단위'} ={' '}
+            {fmtG(unitIngRow.weight)})
           </p>
         )}
       </div>
@@ -146,7 +152,8 @@ export function RecipeCheckPage() {
                 <th className="px-3 py-2 text-left font-medium">원료</th>
                 <th className="px-3 py-2 text-right font-medium">1단위 중량</th>
                 <th className="px-3 py-2 text-right font-medium">
-                  {unitCount}{draft.unitLabel ? draft.unitLabel : '단위'} 합계
+                  {unitCount}
+                  {draft.unitLabel ? draft.unitLabel : '단위'} 합계
                 </th>
               </tr>
             </thead>
@@ -187,7 +194,9 @@ export function RecipeCheckPage() {
       )}
 
       {!draft && selectedId === '' && (
-        <p className="text-sm text-gray-400">레시피를 선택하면 중량이 표시됩니다.</p>
+        <p className="text-sm text-gray-400">
+          레시피를 선택하면 중량이 표시됩니다.
+        </p>
       )}
     </div>
   )

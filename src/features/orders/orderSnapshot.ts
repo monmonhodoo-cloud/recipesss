@@ -80,8 +80,6 @@ export function preparationIssues(
       issues.add(
         `${view.productLabel}: 원료 병합 결과를 레시피 관리에서 먼저 확인해주세요.`,
       )
-    if (view.draft.status === 'inactive')
-      issues.add(`${view.productLabel}: 사용 중단한 레시피입니다.`)
     const unitId = view.preset.unitIngredientId || view.draft.unitIngredientId
     const unitRow = view.draft.composition.find(
       (row) => row.ingredientId === unitId,

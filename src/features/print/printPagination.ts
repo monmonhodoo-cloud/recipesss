@@ -12,9 +12,24 @@ export function paginateOwnerGroups(
   groups: OutputOneGroup[],
 ): OutputOneGroup[] {
   return groups
-    .flatMap((group) =>
-      chunks(group.columns, 9).map((columns) => ({ ...group, columns })),
-    )
+    .flatMap((group) => {
+      const columnLimit = group.rows ? 8 : 9
+      return chunks(group.columns, columnLimit).flatMap((columns, index) => {
+        if (!group.rows) return [{ ...group, columns }]
+        const rowChunks = group.rows.length ? chunks(group.rows, 16) : [[]]
+        return rowChunks.map((rows) => ({
+          ...group,
+          columns,
+          rows: rows.map((row) => ({
+            ...row,
+            weights: row.weights.slice(
+              index * columnLimit,
+              index * columnLimit + columns.length,
+            ),
+          })),
+        }))
+      })
+    })
     .sort(
       (a, b) =>
         a.columns.length - b.columns.length ||

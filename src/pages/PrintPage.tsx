@@ -186,7 +186,7 @@ export function PrintPage() {
       )}
       {format === 'staff' && missingAlias && (
         <div className="prep-notice prep-error">
-          치환명이 없는 영양제가 포함되어 직원용 출력이 중단되었습니다.{' '}
+          치환명이 없는 재료가 포함되어 직원용 출력이 중단되었습니다.{' '}
           <Link to="/ingredients">원료·영양제 관리</Link>에서 수정한 후 새 준비
           목록으로 저장해주세요.
         </div>

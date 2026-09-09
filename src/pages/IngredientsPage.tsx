@@ -2,12 +2,17 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useEffect, useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { Link } from 'react-router-dom'
+import {
+  IngredientPreparationSettings,
+  type PreparationSettings,
+} from '../components/IngredientPreparationSettings'
 
 import {
   useCreateIngredient,
   useDeleteIngredient,
   useMergeIngredients,
   useUpdateIngredient,
+  useUpdatePreparationSettings,
 } from '../features/ingredients/ingredientMutations'
 import { buildIngredientMergePlan } from '../features/ingredients/ingredientMerge'
 import { useIngredients } from '../features/ingredients/ingredientQueries'
@@ -58,6 +63,7 @@ export function IngredientsPage() {
   const presetsQuery = usePresets(uid)
   const createIngredient = useCreateIngredient(uid)
   const updateIngredient = useUpdateIngredient(uid)
+  const updatePreparationSettings = useUpdatePreparationSettings(uid)
   const deleteIngredient = useDeleteIngredient(uid)
   const mergeIngredients = useMergeIngredients(uid)
   const ingredients = ingredientsQuery.data ?? EMPTY_INGREDIENTS
@@ -130,6 +136,7 @@ export function IngredientsPage() {
   }, [ingredients, mergeSelectedIds])
 
   const mutationPending =
+    updatePreparationSettings.isPending ||
     updateIngredient.isPending ||
     createIngredient.isPending ||
     deleteIngredient.isPending ||
@@ -369,6 +376,12 @@ export function IngredientsPage() {
               onRename={(name) => void handleRename(selectedIngredient, name)}
               onSave={(values) => void handleSave(selectedIngredient, values)}
               onToggleHidden={() => void handleToggleHidden(selectedIngredient)}
+              onSavePreparation={(settings) =>
+                updatePreparationSettings.mutateAsync({
+                  ingredientId: selectedIngredient.id,
+                  ...settings,
+                })
+              }
               usedByRecipes={usedByRecipes}
             />
           </div>
@@ -559,6 +572,7 @@ function NutrientProfileEditor({
   onRename,
   onSave,
   onToggleHidden,
+  onSavePreparation,
   usedByRecipes,
 }: {
   ingredient: Ingredient
@@ -567,6 +581,7 @@ function NutrientProfileEditor({
   onRename: (name: string) => void
   onSave: (values: NutrientProfileFormValues) => void
   onToggleHidden: () => void
+  onSavePreparation: (settings: PreparationSettings) => Promise<unknown>
   usedByRecipes: Array<{ id: string; name: string }>
 }) {
   const [name, setName] = useState(ingredient.name)
@@ -582,7 +597,7 @@ function NutrientProfileEditor({
 
   useEffect(() => {
     reset(defaultNutrientProfileFormValues(ingredient.nutrientProfile))
-  }, [ingredient, reset])
+  }, [ingredient.nutrientProfile, reset])
 
   const metaByCategory = useMemo(() => {
     return CATEGORY_ORDER.map((category) => ({
@@ -668,6 +683,12 @@ function NutrientProfileEditor({
           </button>
         </div>
       </div>
+
+      <IngredientPreparationSettings
+        ingredient={ingredient}
+        isPending={isPending}
+        onSave={onSavePreparation}
+      />
 
       <div className="flex flex-wrap justify-end gap-2 border-b border-gray-100 px-4 py-3">
         <button

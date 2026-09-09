@@ -45,7 +45,9 @@ export function PreparationProduct({
   const [error, setError] = useState('')
   const applyPresets = useApplyDraftPresets(uid)
   const currentPreset =
-    group.presets.find((item) => item.id === viewId) ?? group.presets[0]
+    group.presets.find((item) => item.id === viewId) ??
+    group.presets.find((item) => selected.has(item.id)) ??
+    group.presets[0]
   const view = currentPreset
     ? buildPresetPrintViews([currentPreset.id], presets, drafts, ingredients)[0]
     : undefined
@@ -144,7 +146,7 @@ export function PreparationProduct({
             aria-controls={`${sectionId}-detail`}
             onClick={() => setExpanded(!expanded)}
           >
-            {expanded ? '영양제 접기' : '영양제 보기'}
+            {expanded ? '계량 재료 접기' : '계량 재료 보기'}
             {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
           </button>
         </div>
@@ -163,7 +165,10 @@ export function PreparationProduct({
               aria-label={`${group.draftName} ${formatPresetInput(preset)} 프리셋`}
               checked={selected.has(preset.id)}
               disabled={pending || draft.mergeReviewPending}
-              onChange={(event) => onSelect([preset.id], event.target.checked)}
+              onChange={(event) => {
+                if (event.target.checked) setViewId(preset.id)
+                onSelect([preset.id], event.target.checked)
+              }}
             />
             <span>{formatPresetInput(preset)}</span>
           </label>
@@ -252,7 +257,7 @@ export function PreparationProduct({
         <div className="prep-detail" id={`${sectionId}-detail`}>
           <div className="prep-detailhead">
             <label>
-              영양제 확인{' '}
+              계량 재료 확인{' '}
               {currentPreset && (
                 <select
                   aria-label={`${group.draftName} 확인할 프리셋`}
@@ -281,7 +286,7 @@ export function PreparationProduct({
             <table>
               <thead>
                 <tr>
-                  <th>영양제</th>
+                  <th>계량 재료</th>
                   <th>직원용 치환명</th>
                   <th>계량 중량</th>
                 </tr>
@@ -307,8 +312,8 @@ export function PreparationProduct({
           ) : (
             <p className="prep-meta">
               {currentPreset
-                ? '출력할 영양제가 없습니다. 원료·영양제 구분과 숨김 설정을 확인해주세요.'
-                : '프리셋을 추가하면 해당 단위의 영양제를 확인할 수 있습니다.'}
+                ? '출력할 재료가 없습니다. 원료·영양제 관리에서 ‘계량·출력에 포함’을 설정해주세요.'
+                : '프리셋을 추가하면 해당 단위의 계량 재료를 확인할 수 있습니다.'}
             </p>
           )}
         </div>

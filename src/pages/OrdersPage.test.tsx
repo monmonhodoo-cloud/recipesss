@@ -17,19 +17,20 @@ const data = vi.hoisted(() => ({
   ingredients: [] as Ingredient[],
   orders: [] as SavedOrder[],
   save: vi.fn(),
+  refetch: vi.fn(),
 }))
 vi.mock('../stores/authStore', () => ({
   useAuthStore: (select: (state: unknown) => unknown) =>
     select({ user: { uid: 'owner' } }),
 }))
 vi.mock('../features/recipes/recipeQueries', () => ({
-  useRecipeDrafts: () => ({ data: data.drafts }),
+  useRecipeDrafts: () => ({ data: data.drafts, refetch: data.refetch }),
 }))
 vi.mock('../features/presets/presetQueries', () => ({
-  usePresets: () => ({ data: data.presets }),
+  usePresets: () => ({ data: data.presets, refetch: data.refetch }),
 }))
 vi.mock('../features/ingredients/ingredientQueries', () => ({
-  useIngredients: () => ({ data: data.ingredients }),
+  useIngredients: () => ({ data: data.ingredients, refetch: data.refetch }),
 }))
 vi.mock('../features/orders/orderStorage', () => ({
   useSavedOrders: () => ({ data: data.orders }),
@@ -59,6 +60,7 @@ function renderOrders(entry = '/orders') {
 }
 
 beforeEach(() => {
+  data.refetch.mockReset()
   data.drafts = [
     {
       id: 'chicken',
@@ -134,6 +136,15 @@ beforeEach(() => {
 })
 
 describe('준비·출력 사용자 흐름', () => {
+  it('이전 비활성 레시피도 선택하고 저장할 수 있다', async () => {
+    data.drafts[0]!.status = 'inactive'
+    renderOrders()
+    fireEvent.click(screen.getByRole('checkbox', { name: '치킨 1 kg 프리셋' }))
+    fireEvent.click(screen.getByRole('button', { name: '준비 목록 저장' }))
+    await screen.findByRole('button', { name: '저장됨' })
+    expect(data.orders[0]?.snapshot?.items).toHaveLength(1)
+  })
+
   it('여러 제품의 프리셋과 영양제 펼치기, 미등록 프리셋 안내를 함께 보여준다', () => {
     const baseDraft = data.drafts[0]!
     const basePreset = data.presets[0]!
@@ -169,7 +180,9 @@ describe('준비·출력 사용자 흐름', () => {
         .map((item) => item.id)
         .join(',')}`,
     )
-    fireEvent.click(screen.getAllByRole('button', { name: '영양제 보기' })[0]!)
+    fireEvent.click(
+      screen.getAllByRole('button', { name: '계량 재료 보기' })[0]!,
+    )
     fireEvent.change(
       screen.getByRole('combobox', { name: '치킨 캐서롤 파티 확인할 프리셋' }),
       { target: { value: '0-1' } },
@@ -224,5 +237,68 @@ describe('준비·출력 사용자 흐름', () => {
     await waitFor(() =>
       expect(screen.getByRole('button', { name: '저장됨' })).toBeDisabled(),
     )
+  })
+
+  it('원료 연결 경고에서 선택을 유지한 채 최신 목록을 다시 확인할 수 있다', () => {
+    data.ingredients = data.ingredients.filter((item) => item.id !== 'meat')
+    renderOrders('/orders?presets=p0')
+    expect(
+      screen.getByRole('button', { name: '준비 목록 저장' }),
+    ).toBeDisabled()
+    fireEvent.click(screen.getByRole('button', { name: '목록 새로고침' }))
+    expect(data.refetch).toHaveBeenCalledTimes(3)
+    expect(
+      screen.getByRole('checkbox', { name: '치킨 1 kg 프리셋' }),
+    ).toBeChecked()
+    expect(data.save).not.toHaveBeenCalled()
+  })
+
+  it('체크한 프리셋의 영양제 중량을 즉시 미리보기에 반영한다', () => {
+    renderOrders()
+    fireEvent.click(screen.getByRole('button', { name: '계량 재료 보기' }))
+    expect(screen.getByRole('cell', { name: '6.0g' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('checkbox', { name: '치킨 3 kg 프리셋' }))
+    expect(
+      screen.getByRole('combobox', { name: '치킨 확인할 프리셋' }),
+    ).toHaveValue('p2')
+    expect(screen.getByRole('cell', { name: '18.0g' })).toBeInTheDocument()
+  })
+
+  it('선택된 프리셋 주소를 다시 열어도 그 값으로 미리보기를 시작한다', () => {
+    renderOrders('/orders?presets=p2')
+    fireEvent.click(screen.getByRole('button', { name: '계량 재료 보기' }))
+    expect(
+      screen.getByRole('combobox', { name: '치킨 확인할 프리셋' }),
+    ).toHaveValue('p2')
+    expect(screen.getByRole('cell', { name: '18.0g' })).toBeInTheDocument()
+  })
+
+  it('고양이 탭에서 동결건조를 제외하고 동결건조 탭으로 돌아와도 선택을 유지한다', () => {
+    data.drafts.push({
+      ...data.drafts[0]!,
+      id: 'freeze',
+      name: '동결 주식 덕',
+      category: '동결건조',
+    })
+    data.presets.push({
+      ...data.presets[0]!,
+      id: 'freeze_p',
+      draftId: 'freeze',
+      code: 'B0',
+    })
+    renderOrders('/orders?presets=freeze_p')
+    fireEvent.click(screen.getByRole('button', { name: '고양이' }))
+    expect(screen.getByRole('heading', { name: '치킨' })).toBeInTheDocument()
+    expect(
+      screen.queryByRole('heading', { name: '동결 주식 덕' }),
+    ).not.toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: '동결건조' }))
+    expect(
+      screen.getByRole('checkbox', { name: '동결 주식 덕 1 kg 프리셋' }),
+    ).toBeChecked()
+    expect(
+      screen.queryByRole('heading', { name: '치킨' }),
+    ).not.toBeInTheDocument()
+    expect(data.drafts[1]?.species).toBe('cat')
   })
 })

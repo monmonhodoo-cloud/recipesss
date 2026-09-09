@@ -1,5 +1,11 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { deleteDoc, doc, setDoc, writeBatch } from 'firebase/firestore'
+import {
+  deleteDoc,
+  doc,
+  setDoc,
+  updateDoc,
+  writeBatch,
+} from 'firebase/firestore'
 
 import { db } from '../../firebase'
 import type { Ingredient, Preset, RecipeDraft } from '../../types/recipe'
@@ -41,6 +47,42 @@ export function useCreateIngredient(uid: string | undefined) {
     },
     onSuccess: () =>
       queryClient.invalidateQueries({ queryKey: ingredientsQueryKey }),
+  })
+}
+
+export function useUpdatePreparationSettings(uid: string | undefined) {
+  const queryClient = useQueryClient()
+  return useMutation({
+    mutationFn: async ({
+      ingredientId,
+      includeInPreparation,
+      displayName,
+    }: {
+      ingredientId: string
+      includeInPreparation: boolean
+      displayName: string
+    }) => {
+      if (!uid) throw new Error('로그인이 필요합니다.')
+      // 기존 문서의 출력 설정만 수정한다. 원료 구분·영양값·배합은 건드리지 않는다.
+      await updateDoc(ingredientRef(uid, ingredientId), {
+        includeInPreparation,
+        displayName: displayName.trim(),
+      })
+    },
+    onSuccess: (_, settings) =>
+      queryClient.setQueryData<Ingredient[]>(
+        ['recipesssIngredients', uid],
+        (items) =>
+          items?.map((item) =>
+            item.id === settings.ingredientId
+              ? {
+                  ...item,
+                  includeInPreparation: settings.includeInPreparation,
+                  displayName: settings.displayName.trim(),
+                }
+              : item,
+          ),
+      ),
   })
 }
 

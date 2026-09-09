@@ -204,21 +204,68 @@ describe('filterOrderGroups', () => {
   )
 
   it('keeps all groups for the all filter', () => {
-    expect(filterOrderGroups(groups, 'all').map((group) => group.draftId))
-      .toEqual(['draft_cat', 'draft_dog', 'draft_freeze'])
+    expect(
+      filterOrderGroups(groups, 'all').map((group) => group.draftId),
+    ).toEqual(['draft_cat', 'draft_dog', 'draft_freeze'])
   })
 
-  it('filters groups by species', () => {
-    expect(filterOrderGroups(groups, 'cat').map((group) => group.draftId))
-      .toEqual(['draft_cat'])
-    expect(filterOrderGroups(groups, 'dog').map((group) => group.draftId))
-      .toEqual(['draft_dog', 'draft_freeze'])
+  it('filters non-freeze-dried groups by species', () => {
+    expect(
+      filterOrderGroups(groups, 'cat').map((group) => group.draftId),
+    ).toEqual(['draft_cat'])
+    expect(
+      filterOrderGroups(groups, 'dog').map((group) => group.draftId),
+    ).toEqual(['draft_dog'])
   })
 
   it('filters freeze-dried groups by draft name', () => {
     expect(
       filterOrderGroups(groups, 'freezeDried').map((group) => group.draftId),
     ).toEqual(['draft_freeze'])
+  })
+
+  it('동결건조와 동결텐더는 고양이·강아지에 중복 표시하지 않고 종을 보존한다', () => {
+    const classified = groupPresetsByRecipe(
+      [
+        { ...draft('cat_raw', '고양이 생식', 'cat', 0), category: '생식' },
+        { ...draft('dog_raw', '강아지 생식', 'dog', 1), category: '생식' },
+        {
+          ...draft('cat_freeze', '카테고리로 분류한 제품', 'cat', 2),
+          category: '동결건조',
+        },
+        { ...draft('dog_tender', '텐더 제품', 'dog', 3), category: '동결텐더' },
+        draft('cat_legacy', '동결 주식 덕', 'cat', 4),
+        draft('dog_legacy', '동결 주식치킨', 'dog', 5),
+        {
+          ...draft('common_freeze', '치킨 캐서롤 파티', null, 6),
+          category: '동결건조',
+        },
+        {
+          ...draft('explicit_raw', '동결 이름이지만 생식으로 지정', 'cat', 7),
+          category: '생식',
+        },
+      ],
+      [],
+      true,
+    )
+    const before = structuredClone(classified)
+    expect(
+      filterOrderGroups(classified, 'cat').map((item) => item.draftId),
+    ).toEqual(['cat_raw', 'explicit_raw'])
+    expect(
+      filterOrderGroups(classified, 'dog').map((item) => item.draftId),
+    ).toEqual(['dog_raw'])
+    expect(
+      filterOrderGroups(classified, 'freezeDried').map((item) => item.draftId),
+    ).toEqual([
+      'cat_freeze',
+      'dog_tender',
+      'cat_legacy',
+      'dog_legacy',
+      'common_freeze',
+    ])
+    expect(filterOrderGroups(classified, 'all')).toEqual(before)
+    expect(classified).toEqual(before)
   })
 })
 

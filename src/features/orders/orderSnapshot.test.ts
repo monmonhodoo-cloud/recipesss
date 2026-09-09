@@ -83,6 +83,14 @@ const views = () =>
   )
 
 describe('준비 내역 스냅샷', () => {
+  it('이전 비활성 표시가 남아 있어도 프리셋 준비를 막지 않는다', () => {
+    const currentViews = views()
+    currentViews[0]!.draft.status = 'inactive'
+    expect(preparationIssues([preset.id], currentViews, ingredients)).toEqual(
+      [],
+    )
+  })
+
   it('원본·치환명·프리셋 코드 변경 및 삭제 이후에도 두 출력물과 소량 중량을 보존한다', () => {
     const currentViews = views()
     const snapshot = createOrderSnapshot(currentViews)

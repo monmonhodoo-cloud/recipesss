@@ -1,4 +1,5 @@
 import { getPresetRatioInfo } from '../presets/presetRatio'
+import { isPreparationIncluded } from '../ingredients/ingredientSelectors'
 import type { Ingredient, Preset, RecipeDraft } from '../../types/recipe'
 
 // 단계 4 출력 1·2 데이터 (v2 ui-tab-preview.js 충실 포팅, SPEC §5.7).
@@ -53,7 +54,11 @@ export function formatCodeWithInput(preset: Preset): string {
 
 function productLabel(draft: RecipeDraft): string {
   const prefix =
-    draft.species === 'cat' ? '(고양이)' : draft.species === 'dog' ? '(강아지)' : ''
+    draft.species === 'cat'
+      ? '(고양이)'
+      : draft.species === 'dog'
+        ? '(강아지)'
+        : ''
   return `${prefix}${draft.name || ''}`
 }
 
@@ -62,10 +67,16 @@ function productLabel(draft: RecipeDraft): string {
 function presetRatio(preset: Preset, draft: RecipeDraft): number {
   const unitIngId = preset.unitIngredientId || draft.unitIngredientId
   if (Number(preset.inputAmount) > 0) {
-    const info = getPresetRatioInfo(draft, unitIngId, Number(preset.inputAmount))
+    const info = getPresetRatioInfo(
+      draft,
+      unitIngId,
+      Number(preset.inputAmount),
+    )
     if (info.hasInput) return info.ratio
   }
-  const unitRow = draft.composition.find((row) => row.ingredientId === unitIngId)
+  const unitRow = draft.composition.find(
+    (row) => row.ingredientId === unitIngId,
+  )
   if (!unitRow || !unitRow.weight) return 1
   return (Number(preset.targetWeight) || 0) / unitRow.weight
 }
@@ -91,8 +102,7 @@ export function buildPresetPrintViews(
       const ingredient = ingredientById.get(row.ingredientId)
       if (
         !ingredient ||
-        ingredient.kind !== 'supplement' ||
-        ingredient.hidden ||
+        !isPreparationIncluded(ingredient) ||
         !ingredient.name ||
         !row.weight
       ) {
@@ -134,6 +144,7 @@ export type OutputOneGroup = {
   name: string // (고양이)치킨
   // 컬럼 = 프리셋 (코드 + 투입량), 셀 = 난각분 환산 중량 표시 문자열
   columns: Array<{ header: string; eggshell: string }>
+  rows?: Array<{ name: string; weights: string[] }>
 }
 
 export function buildOutputOne(views: PresetPrintView[]): OutputOneGroup[] {
@@ -144,20 +155,42 @@ export function buildOutputOne(views: PresetPrintView[]): OutputOneGroup[] {
     map.set(view.productLabel, list)
   }
 
-  return [...map.entries()]
-    .map(([name, groupViews]) => ({
-      name,
-      columns: sortViewsByCode(groupViews).map((view) => ({
-        header: formatCodeWithInput(view.preset),
-        eggshell: formatWeight(eggshellWeight(view)),
-      })),
-    }))
-    // 열 수 적은 표부터 → 작은 표들이 한 줄에 나란히 패킹됨 (동수는 이름순).
-    .sort(
-      (a, b) =>
-        a.columns.length - b.columns.length ||
-        a.name.localeCompare(b.name, 'ko'),
-    )
+  return (
+    [...map.entries()]
+      .map(([name, groupViews]) => {
+        const sorted = sortViewsByCode(groupViews)
+        const ingredients = new Map(
+          sorted.flatMap((view) =>
+            view.supplements.map(
+              (row) => [row.ingredientId, row.name] as const,
+            ),
+          ),
+        )
+        return {
+          name,
+          columns: sorted.map((view) => ({
+            header: formatCodeWithInput(view.preset),
+            eggshell: formatWeight(eggshellWeight(view)),
+          })),
+          rows: [...ingredients].map(([id, ingredientName]) => ({
+            name: ingredientName,
+            weights: sorted.map((view) =>
+              formatWeight(
+                view.supplements
+                  .filter((row) => row.ingredientId === id)
+                  .reduce((sum, row) => sum + row.scaledWeight, 0),
+              ),
+            ),
+          })),
+        }
+      })
+      // 열 수 적은 표부터 → 작은 표들이 한 줄에 나란히 패킹됨 (동수는 이름순).
+      .sort(
+        (a, b) =>
+          a.columns.length - b.columns.length ||
+          a.name.localeCompare(b.name, 'ko'),
+      )
+  )
 }
 
 // ---------- 출력 2: 난각분 단독 표 + 코드 prefix별 치환명 표 ----------

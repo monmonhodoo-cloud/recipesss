@@ -1,12 +1,14 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query'
 import {
   collection,
-  deleteDoc,
   deleteField,
   doc,
+  getDocs,
+  query,
   serverTimestamp,
   setDoc,
   updateDoc,
+  where,
   writeBatch,
 } from 'firebase/firestore'
 
@@ -28,7 +30,7 @@ function newDraftId(): string {
   return `draft_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`
 }
 
-// 레시피 헤더(이름·종·상태) 편집.
+// 레시피 헤더(이름·종·카테고리) 편집.
 export function useSaveRecipeMeta(uid: string | undefined) {
   const queryClient = useQueryClient()
   const draftsQueryKey = ['recipeDrafts', uid]
@@ -39,14 +41,12 @@ export function useSaveRecipeMeta(uid: string | undefined) {
       name,
       species,
       category,
-      status,
       now,
     }: {
       draftId: string
       name: string
       species: Species
       category: RecipeCategory | undefined
-      status: RecipeDraft['status']
       now: number
     }) => {
       if (!uid) throw new Error('로그인이 필요합니다.')
@@ -54,7 +54,6 @@ export function useSaveRecipeMeta(uid: string | undefined) {
         name,
         species,
         category: category ?? deleteField(),
-        status,
         updatedAt: now,
       })
     },
@@ -91,7 +90,6 @@ export function useCreateRecipeDraft(uid: string | undefined) {
         unitLabel: '',
         composition: [],
         standardId: '',
-        status: 'draft',
         sortOrder: now,
         createdAt: now,
         updatedAt: now,
@@ -191,7 +189,7 @@ export function useRegisterRecipe(uid: string | undefined) {
   })
 }
 
-// 레시피 삭제. recipeDrafts/{uid}/items/{draftId} 문서 제거.
+// 레시피와 해당 프리셋을 함께 삭제한다. 공유 recipes와 준비 내역은 유지한다.
 export function useDeleteRecipeDraft(uid: string | undefined) {
   const queryClient = useQueryClient()
   const draftsQueryKey = ['recipeDrafts', uid]
@@ -199,10 +197,22 @@ export function useDeleteRecipeDraft(uid: string | undefined) {
   return useMutation({
     mutationFn: async (draftId: string) => {
       if (!uid) throw new Error('로그인이 필요합니다.')
-      await deleteDoc(draftRef(uid, draftId))
+      const presets = await getDocs(
+        query(
+          collection(db, `recipesssPresets/${uid}/items`),
+          where('draftId', '==', draftId),
+        ),
+      )
+      const batch = writeBatch(db)
+      for (const preset of presets.docs) batch.delete(preset.ref)
+      batch.delete(draftRef(uid, draftId))
+      await batch.commit()
     },
     onSuccess: () =>
-      queryClient.invalidateQueries({ queryKey: draftsQueryKey }),
+      Promise.all([
+        queryClient.invalidateQueries({ queryKey: draftsQueryKey }),
+        queryClient.invalidateQueries({ queryKey: ['recipesssPresets', uid] }),
+      ]),
   })
 }
 

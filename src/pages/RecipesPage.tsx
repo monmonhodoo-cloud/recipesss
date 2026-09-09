@@ -1,30 +1,21 @@
 import { useMemo, useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
+import { DeleteRecipeDialog } from '../components/DeleteRecipeDialog'
 import {
   filterDrafts,
   RECIPE_CATEGORIES,
   type DraftCategoryFilter,
   type DraftFilter,
   type DraftSpeciesFilter,
-  type DraftStatusFilter,
 } from '../features/recipes/filterDrafts'
-import {
-  useClearMergeReview,
-  useDeleteRecipeDraft,
-} from '../features/recipes/recipeMutations'
+import { useClearMergeReview } from '../features/recipes/recipeMutations'
 import { useRecipeDrafts } from '../features/recipes/recipeQueries'
-import {
-  CARD_CLS,
-  EMPTY_STATE_CLS,
-  INPUT_CLS,
-  SECONDARY_BTN_CLS,
-} from '../lib/ui'
+import { CARD_CLS, EMPTY_STATE_CLS, INPUT_CLS } from '../lib/ui'
 import { useAuthStore } from '../stores/authStore'
-import type { RecipeCategory } from '../types/recipe'
+import type { RecipeCategory, RecipeDraft } from '../types/recipe'
 
 const DEFAULT_FILTER: DraftFilter = {
-  status: 'all',
   species: 'all',
   category: 'all',
   search: '',
@@ -45,12 +36,6 @@ function speciesLabel(species: DraftSpeciesFilter): string {
   return '전체'
 }
 
-function statusLabel(status: DraftStatusFilter): string {
-  if (status === 'draft') return '임시'
-  if (status === 'inactive') return '비활성'
-  return '전체'
-}
-
 function speciesValue(species: DraftSpeciesFilter): string {
   return species === null ? 'none' : species
 }
@@ -60,22 +45,13 @@ function parseSpecies(value: string): DraftSpeciesFilter {
   return null
 }
 
-function parseStatus(value: string): DraftStatusFilter {
-  if (value === 'draft' || value === 'inactive') return value
-  return 'all'
-}
-
 export function RecipesPage() {
   const navigate = useNavigate()
   const uid = useAuthStore((state) => state.user?.uid)
   const { data, error, isError, isLoading } = useRecipeDrafts(uid)
   const clearMergeReview = useClearMergeReview(uid)
-  const deleteDraft = useDeleteRecipeDraft(uid)
   const [filter, setFilter] = useState<DraftFilter>(DEFAULT_FILTER)
-  const [deleteTarget, setDeleteTarget] = useState<{
-    id: string
-    name: string
-  } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<RecipeDraft | null>(null)
 
   const drafts = data ?? EMPTY_DRAFTS
   const filtered = useMemo(() => filterDrafts(drafts, filter), [drafts, filter])
@@ -100,27 +76,7 @@ export function RecipesPage() {
       </div>
 
       <div className={`mt-4 ${CARD_CLS} p-4`}>
-        <div className="grid gap-3 md:grid-cols-[150px_150px_150px_1fr]">
-          <label className="block">
-            <span className="mb-1 block text-xs font-medium text-gray-500">
-              상태
-            </span>
-            <select
-              className={INPUT_CLS}
-              onChange={(event) =>
-                setFilter((prev) => ({
-                  ...prev,
-                  status: parseStatus(event.target.value),
-                }))
-              }
-              value={filter.status}
-            >
-              <option value="all">전체</option>
-              <option value="draft">임시</option>
-              <option value="inactive">비활성</option>
-            </select>
-          </label>
-
+        <div className="grid gap-3 md:grid-cols-[150px_150px_1fr]">
           <label className="block">
             <span className="mb-1 block text-xs font-medium text-gray-500">
               종
@@ -215,7 +171,6 @@ export function RecipesPage() {
                   <th className="px-3 py-1.5">이름</th>
                   <th className="px-3 py-1.5">종</th>
                   <th className="px-3 py-1.5">카테고리</th>
-                  <th className="px-3 py-1.5">상태</th>
                   <th className="px-3 py-1.5 text-right">구성 원료</th>
                   <th className="px-3 py-1.5"></th>
                 </tr>
@@ -228,17 +183,8 @@ export function RecipesPage() {
                     onClick={() => navigate(`/recipes/${draft.id}`)}
                   >
                     <td className="px-3 py-1.5 font-medium text-gray-800">
-                      {draft.name}
-                    </td>
-                    <td className="px-3 py-1.5">
-                      {speciesLabel(draft.species)}
-                    </td>
-                    <td className="px-3 py-1.5 text-gray-600">
-                      {draft.category ?? '—'}
-                    </td>
-                    <td className="px-3 py-1.5">
                       <div className="flex items-center gap-2">
-                        <span>{statusLabel(draft.status)}</span>
+                        <span>{draft.name}</span>
                         {draft.mergeReviewPending && (
                           <button
                             className="rounded-md bg-red-600 px-2 py-1 text-xs font-semibold text-white hover:bg-red-700 disabled:opacity-60"
@@ -255,6 +201,12 @@ export function RecipesPage() {
                         )}
                       </div>
                     </td>
+                    <td className="px-3 py-1.5">
+                      {speciesLabel(draft.species)}
+                    </td>
+                    <td className="px-3 py-1.5 text-gray-600">
+                      {draft.category ?? '—'}
+                    </td>
                     <td className="px-3 py-1.5 text-right">
                       {draft.composition.length}
                     </td>
@@ -263,7 +215,7 @@ export function RecipesPage() {
                         className="rounded px-2 py-0.5 text-xs text-red-400 hover:bg-red-50 hover:text-red-600"
                         onClick={(e) => {
                           e.stopPropagation()
-                          setDeleteTarget({ id: draft.id, name: draft.name })
+                          setDeleteTarget(draft)
                         }}
                         type="button"
                       >
@@ -278,41 +230,13 @@ export function RecipesPage() {
         </div>
       )}
 
-      {/* 삭제 확인 모달 */}
       {deleteTarget && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="w-80 rounded-xl bg-white p-5 shadow-lg">
-            <h2 className="text-sm font-semibold text-gray-800">레시피 삭제</h2>
-            <p className="mt-2 text-sm text-gray-600">
-              <span className="font-medium text-gray-900">
-                {deleteTarget.name}
-              </span>
-              을(를) 삭제합니다.
-              <br />
-              삭제하면 복구할 수 없습니다.
-            </p>
-            <div className="mt-4 flex justify-end gap-2">
-              <button
-                className={SECONDARY_BTN_CLS}
-                onClick={() => setDeleteTarget(null)}
-                type="button"
-              >
-                취소
-              </button>
-              <button
-                className="rounded-lg bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700 disabled:opacity-50"
-                disabled={deleteDraft.isPending}
-                onClick={async () => {
-                  await deleteDraft.mutateAsync(deleteTarget.id)
-                  setDeleteTarget(null)
-                }}
-                type="button"
-              >
-                삭제
-              </button>
-            </div>
-          </div>
-        </div>
+        <DeleteRecipeDialog
+          draft={deleteTarget}
+          uid={uid}
+          onClose={() => setDeleteTarget(null)}
+          onDeleted={() => setDeleteTarget(null)}
+        />
       )}
     </div>
   )

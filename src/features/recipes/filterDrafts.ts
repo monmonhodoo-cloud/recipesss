@@ -6,14 +6,11 @@ export const RECIPE_CATEGORIES: RecipeCategory[] = [
   '동결텐더',
 ]
 
-export type DraftStatusFilter = 'all' | RecipeDraft['status']
-
 export type DraftSpeciesFilter = 'all' | Species
 
 export type DraftCategoryFilter = 'all' | RecipeCategory
 
 export type DraftFilter = {
-  status: DraftStatusFilter
   species: DraftSpeciesFilter
   category: DraftCategoryFilter
   search: string
@@ -32,7 +29,6 @@ export function filterDrafts(
   const query = filter.search.trim().toLowerCase()
 
   return drafts.filter((draft) => {
-    if (filter.status !== 'all' && draft.status !== filter.status) return false
     if (filter.species !== 'all' && draft.species !== filter.species) {
       return false
     }

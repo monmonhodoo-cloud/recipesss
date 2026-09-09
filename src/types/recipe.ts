@@ -90,7 +90,7 @@ export type RecipeDraft = {
   unitLabel: string // 예: '마리'
   composition: CompositionRow[]
   standardId: string // NutrientProfile id (예: AAFCO_2014_CAT_ADULT)
-  status: 'draft' | 'inactive' // inactive = 사용 중단 (목록 필터)
+  status?: 'draft' | 'inactive' // 이전 데이터 호환용. 표시·사용 여부를 제한하지 않는다.
   sortOrder: number // 드래그&드롭 정렬
   // 영양값 (DL-027): 계산값은 자동 계산하므로 저장 X, 확정값만 저장.
   declaredNutrients?: NutrientValues
@@ -131,6 +131,7 @@ export type Ingredient = {
   displayName: string // 치환명 (선택, 빈 문자열 가능)
   aliases: string[]
   hidden: boolean
+  includeInPreparation?: boolean // 미설정은 기존 표시 중인 영양제만 포함
   nutrientProfile?: NutrientValues // 100g 당 영양값 (USDA import or 수동)
   source?: {
     type: 'usda' | 'manual'
@@ -186,6 +187,7 @@ export type SavedOrderSnapshot = {
   outputOne: Array<{
     name: string
     columns: Array<{ header: string; eggshell: string }>
+    rows?: Array<{ name: string; weights: string[] }> // 없는 과거 내역은 난각분 표 유지
   }>
   outputTwo: {
     eggshellWeights: string[]

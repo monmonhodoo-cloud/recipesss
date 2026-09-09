@@ -33,7 +33,6 @@ const drafts = [
 ]
 
 const allFilter: DraftFilter = {
-  status: 'all',
   species: 'all',
   category: 'all',
   search: '',
@@ -44,16 +43,12 @@ describe('filterDrafts', () => {
     expect(filterDrafts(drafts, allFilter)).toHaveLength(4)
   })
 
-  it('filters by draft status', () => {
+  it('includes old inactive recipes and recipes with no status', () => {
+    const withoutStatus = draft('new', 'New recipe', 'cat')
+    delete withoutStatus.status
     expect(
-      filterDrafts(drafts, { ...allFilter, status: 'draft' }).map((d) => d.id),
-    ).toEqual(['draft_cat_chicken', 'draft_dog_beef', 'draft_none_fish'])
-
-    expect(
-      filterDrafts(drafts, { ...allFilter, status: 'inactive' }).map(
-        (d) => d.id,
-      ),
-    ).toEqual(['draft_cat_old'])
+      filterDrafts([...drafts, withoutStatus], allFilter).map((d) => d.id),
+    ).toEqual(drafts.map((d) => d.id).concat('new'))
   })
 
   it('filters by species including null', () => {
@@ -78,10 +73,9 @@ describe('filterDrafts', () => {
     ).toEqual(['draft_cat_chicken', 'draft_cat_old'])
   })
 
-  it('combines status, species, and search filters', () => {
+  it('combines species and search filters', () => {
     expect(
       filterDrafts(drafts, {
-        status: 'draft',
         species: 'cat',
         category: 'all',
         search: 'chick',
