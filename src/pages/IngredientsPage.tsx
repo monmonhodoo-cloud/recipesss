@@ -63,9 +63,9 @@ export function IngredientsPage() {
   const ingredients = ingredientsQuery.data ?? EMPTY_INGREDIENTS
   const drafts = draftsQuery.data ?? EMPTY_DRAFTS
   const presets = presetsQuery.data ?? EMPTY_PRESETS
-  const [selectedIngredientId, setSelectedIngredientId] = useState<string | null>(
-    null,
-  )
+  const [selectedIngredientId, setSelectedIngredientId] = useState<
+    string | null
+  >(null)
   const [mergeSelectedIds, setMergeSelectedIds] = useState<string[]>([])
   const [mergeModalOpen, setMergeModalOpen] = useState(false)
   const [usdaModalOpen, setUsdaModalOpen] = useState(false)
@@ -83,7 +83,9 @@ export function IngredientsPage() {
   )
   const selectedIngredient = useMemo(() => {
     if (ingredients.length === 0) return undefined
-    const selected = ingredients.find((item) => item.id === selectedIngredientId)
+    const selected = ingredients.find(
+      (item) => item.id === selectedIngredientId,
+    )
     return selected ?? ingredients[0]
   }, [ingredients, selectedIngredientId])
 
@@ -295,9 +297,11 @@ export function IngredientsPage() {
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-title font-bold text-gray-800">원료 마스터</h1>
+          <h1 className="text-title font-bold text-gray-800">
+            원료·영양제 관리
+          </h1>
           <p className="mt-1 text-helper text-gray-500">
-            원료별 100g당 영양값을 직접 입력합니다.
+            원료 구분, 직원용 치환명과 영양값을 관리하세요.
           </p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -520,6 +524,17 @@ function IngredientGroup({
                   {item.name || '(이름 없음)'}
                 </span>
               </button>
+              {Object.keys(item.nutrientProfile ?? {}).length > 0 && (
+                <span
+                  className={`shrink-0 rounded px-1 py-0.5 text-xs ${
+                    active
+                      ? 'bg-gray-600 text-gray-200'
+                      : 'bg-green-50 text-green-700'
+                  }`}
+                >
+                  영양값
+                </span>
+              )}
               {item.hidden && (
                 <span
                   className={`shrink-0 text-xs ${
@@ -562,9 +577,7 @@ function NutrientProfileEditor({
     reset,
   } = useForm<NutrientProfileFormInput, unknown, NutrientProfileFormValues>({
     resolver: zodResolver(nutrientProfileFormSchema),
-    defaultValues: defaultNutrientProfileFormValues(
-      ingredient.nutrientProfile,
-    ),
+    defaultValues: defaultNutrientProfileFormValues(ingredient.nutrientProfile),
   })
 
   useEffect(() => {
@@ -732,24 +745,28 @@ function MergeIngredientModal({
         <div className="border-b border-gray-100 px-4 py-3">
           <h2 className="text-sm font-semibold text-gray-800">원료 병합</h2>
           <p className="mt-1 text-xs text-gray-500">
-            첫 번째로 선택한 원료를 남기고, 나머지 원료 id는 레시피에서 이 원료로 치환됩니다.
+            첫 번째로 선택한 원료를 남기고, 나머지 원료 id는 레시피에서 이
+            원료로 치환됩니다.
           </p>
         </div>
         <div className="space-y-4 p-4">
           <div className="rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
-            {ingredients.map((ingredient) => ingredient.name || '(이름 없음)').join(' / ')}
+            {ingredients
+              .map((ingredient) => ingredient.name || '(이름 없음)')
+              .join(' / ')}
           </div>
           {discardedProfileNames.length > 0 && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
               ⚠️ 다음 원료의 입력된 영양값/출처가 삭제됩니다:{' '}
-              <b>{discardedProfileNames.join(', ')}</b>. 병합 후 남는 원료에 다시
-              입력해야 합니다.
+              <b>{discardedProfileNames.join(', ')}</b>. 병합 후 남는 원료에
+              다시 입력해야 합니다.
             </div>
           )}
           {registeredDriftNames.length > 0 && (
             <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-              ⚠️ 등록된 레시피 {registeredDriftNames.length}건은 재푸시 전까지 옛
-              원료를 유지합니다(자동 반영 안 됨): <b>{registeredDriftNames.join(', ')}</b>
+              ⚠️ 등록된 레시피 {registeredDriftNames.length}건은 재푸시 전까지
+              옛 원료를 유지합니다(자동 반영 안 됨):{' '}
+              <b>{registeredDriftNames.join(', ')}</b>
             </div>
           )}
           <label className="block">
@@ -874,7 +891,9 @@ function UsdaImportModal({
                   onClick={() => void searchQuery.fetchNextPage()}
                   type="button"
                 >
-                  {searchQuery.isFetchingNextPage ? '불러오는 중...' : '더 보기'}
+                  {searchQuery.isFetchingNextPage
+                    ? '불러오는 중...'
+                    : '더 보기'}
                 </button>
               )}
             </div>
@@ -910,8 +929,8 @@ function UsdaImportModal({
                   </p>
                   {mapped.missingKeys.length > 0 && (
                     <div className="mt-3 rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-800">
-                      FDC에 없는 영양소는 빈칸으로 남습니다. 필요하면 적용 후 직접
-                      입력하세요.
+                      FDC에 없는 영양소는 빈칸으로 남습니다. 필요하면 적용 후
+                      직접 입력하세요.
                     </div>
                   )}
                 </div>
@@ -978,7 +997,9 @@ function nextIngredientSortOrder(ingredients: Ingredient[]): number {
 
 function formatUsdaNumber(value: number | undefined): string {
   if (value === undefined) return ''
-  return Number.isInteger(value) ? String(value) : value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
+  return Number.isInteger(value)
+    ? String(value)
+    : value.toFixed(4).replace(/0+$/, '').replace(/\.$/, '')
 }
 
 export default IngredientsPage

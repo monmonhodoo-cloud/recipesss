@@ -166,13 +166,44 @@ export type Preset = {
   createdAt: number
 }
 
-// 저장된 발주 (DL-039). recipesssOrders/{uid}/items/{orderId}.
-// 프리셋 id 스냅샷만 저장 — 재출력 시 현재 프리셋 데이터 기준 (삭제된 프리셋은 제외됨).
+// DL-041: 준비 당시의 계산 결과와 두 출력 양식을 함께 보관한다.
+export type SavedOrderSnapshot = {
+  version: 1
+  items: Array<{
+    presetId: string
+    draftId: string
+    productLabel: string
+    code: string
+    inputAmount: number
+    inputUnitLabel: string
+    supplements: Array<{
+      ingredientId: string
+      name: string
+      displayName: string
+      scaledWeight: number
+    }>
+  }>
+  outputOne: Array<{
+    name: string
+    columns: Array<{ header: string; eggshell: string }>
+  }>
+  outputTwo: {
+    eggshellWeights: string[]
+    aliasGroups: Array<{
+      name: string
+      codes: string[]
+      rows: Array<{ displayName: string; weights: string[] }>
+    }>
+  }
+}
+
+// 기존 ID-only 내역도 읽는다. 당시 수치를 복원할 수 없다는 안내가 필요하다.
 export type SavedOrder = {
   id: string // 'order_xxxxxxxx'
   date: string // 'YYYY-MM-DD' (저장일)
   presetIds: string[]
   createdAt: number
+  snapshot?: SavedOrderSnapshot
 }
 
 // SPEC §4.8 Price (별도 인터페이스 미정 — DL-024).

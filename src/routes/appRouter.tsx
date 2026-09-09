@@ -5,13 +5,13 @@ import { AuthGuard } from '../components/AuthGuard'
 import { IngredientsPage } from '../pages/IngredientsPage'
 import { LoginPage } from '../pages/LoginPage'
 import { OrdersPage } from '../pages/OrdersPage'
+import { OrderHistoryPage } from '../pages/OrderHistoryPage'
 import { PlaceholderPage } from '../pages/PlaceholderPage'
 import { RecipeDetailPage } from '../pages/RecipeDetailPage'
 import { RecipeNewPage } from '../pages/RecipeNewPage'
 import { PrintPageLazy } from '../pages/PrintPageLazy'
 import { RecipeCheckPage } from '../pages/RecipeCheckPage'
 import { RecipesPage } from '../pages/RecipesPage'
-import { SettingsPage } from '../pages/SettingsPage'
 
 // SPEC §5.1 라우트 트리 + AuthGuard.
 // 단계 0-C: 모든 인증된 라우트는 PlaceholderPage. 단계 0.5부터 실제 페이지로.
@@ -25,9 +25,9 @@ export const appRouter = createBrowserRouter([
         element: <AppLayout />,
         children: [
           {
-            // 대시보드 제거 — 루트는 레시피 목록으로.
+            // DL-041: 앱을 열면 바로 프리셋 선택.
             path: '/',
-            element: <Navigate replace to="/recipes" />,
+            element: <Navigate replace to="/orders" />,
           },
           {
             path: '/recipes/new',
@@ -60,18 +60,20 @@ export const appRouter = createBrowserRouter([
             element: <OrdersPage />,
           },
           {
+            path: '/history',
+            element: <OrderHistoryPage />,
+          },
+          {
             path: '/print',
             element: <PrintPageLazy />,
           },
           {
             path: '/prices',
-            element: (
-              <PlaceholderPage title="단가 관리" stage="단계 5 (생산앱 협의)" />
-            ),
+            element: <Navigate replace to="/orders" />,
           },
           {
             path: '/settings',
-            element: <SettingsPage />,
+            element: <Navigate replace to="/orders" />,
           },
           {
             path: '*',

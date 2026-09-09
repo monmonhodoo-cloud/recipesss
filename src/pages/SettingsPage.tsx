@@ -15,6 +15,7 @@ import {
 import type { V2State } from '../features/migration/v2State'
 import { CARD_CLS, PRIMARY_BTN_CLS, SECONDARY_BTN_CLS } from '../lib/ui'
 import { useAuthStore } from '../stores/authStore'
+import backupData from '../../backups/2026-06-03-pre-rewrite.json'
 
 // SPEC §5.9 + §11.2 (DL-031): 앱 내 1회성 마이그레이션.
 // backups/*.json 업로드 → migrateV2toV3 → buildMigrationPlan → dry-run 미리보기
@@ -195,6 +196,74 @@ export function SettingsPage() {
           </div>
         )}
       </div>
+
+      <ImportSharedRecipes uid={uid} />
+    </div>
+  )
+}
+
+function ImportSharedRecipes({ uid }: { uid: string | undefined }) {
+  const [status, setStatus] = useState<'idle' | 'writing' | 'done' | 'error'>('idle')
+  const [msg, setMsg] = useState('')
+
+  async function handleImport() {
+    if (!uid) return
+    setStatus('writing')
+    setMsg('')
+    try {
+      const v2 = backupData as unknown as V2State
+      const result = migrateV2toV3(v2, { ownerUid: uid, now: Date.now() })
+      const allWrites = buildMigrationPlan(result, uid)
+      // null-species draft id 목록
+      const nullDraftIds = new Set(
+        Object.values(v2.products)
+          .filter((p) => p.species === null)
+          .map((p) => p.id.replace('prod_', 'draft_')),
+      )
+      const writes = allWrites.filter(
+        (w) => w.kind === 'recipeDraft' && nullDraftIds.has(w.docId),
+      )
+      await runMigrationWrites(writes)
+      setStatus('done')
+      setMsg(`공용 레시피 ${writes.length}개를 추가했습니다.`)
+    } catch (err) {
+      setStatus('error')
+      setMsg(err instanceof Error ? err.message : '실패했습니다.')
+    }
+  }
+
+  return (
+    <div className={`mt-4 ${CARD_CLS} p-6`}>
+      <h2 className="text-base font-semibold text-gray-800">공용 레시피 복원</h2>
+      <p className="mt-1 text-helper text-gray-500">
+        2026-06-03 백업에 있는 공용(종 미지정) 레시피 6개를 새 앱에 추가합니다.
+        이미 있는 항목은 덮어쓰지 않습니다 (같은 ID면 덮어씀 — 공용 레시피를
+        수정한 적 없으면 안전).
+      </p>
+      {status === 'idle' && (
+        <button
+          className={`mt-4 ${PRIMARY_BTN_CLS}`}
+          disabled={!uid}
+          onClick={() => void handleImport()}
+          type="button"
+        >
+          공용 레시피 6개 추가
+        </button>
+      )}
+      {status === 'writing' && (
+        <div className="mt-4 text-helper text-gray-600">추가 중...</div>
+      )}
+      {(status === 'done' || status === 'error') && (
+        <div
+          className={`mt-4 rounded-md px-3 py-2 text-helper ${
+            status === 'done'
+              ? 'bg-green-50 text-green-700'
+              : 'bg-red-50 text-red-700'
+          }`}
+        >
+          {msg}
+        </div>
+      )}
     </div>
   )
 }

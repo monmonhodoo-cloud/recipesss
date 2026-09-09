@@ -1,8 +1,7 @@
 import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { Link, useNavigate } from 'react-router-dom'
 
 import {
-  countBySpecies,
   filterDrafts,
   RECIPE_CATEGORIES,
   type DraftCategoryFilter,
@@ -15,7 +14,12 @@ import {
   useDeleteRecipeDraft,
 } from '../features/recipes/recipeMutations'
 import { useRecipeDrafts } from '../features/recipes/recipeQueries'
-import { CARD_CLS, EMPTY_STATE_CLS, INPUT_CLS, SECONDARY_BTN_CLS } from '../lib/ui'
+import {
+  CARD_CLS,
+  EMPTY_STATE_CLS,
+  INPUT_CLS,
+  SECONDARY_BTN_CLS,
+} from '../lib/ui'
 import { useAuthStore } from '../stores/authStore'
 import type { RecipeCategory } from '../types/recipe'
 
@@ -37,7 +41,7 @@ const EMPTY_DRAFTS: NonNullable<ReturnType<typeof useRecipeDrafts>['data']> = []
 function speciesLabel(species: DraftSpeciesFilter): string {
   if (species === 'cat') return '고양이'
   if (species === 'dog') return '강아지'
-  if (species === null) return '미지정'
+  if (species === null) return '공용'
   return '전체'
 }
 
@@ -68,28 +72,30 @@ export function RecipesPage() {
   const clearMergeReview = useClearMergeReview(uid)
   const deleteDraft = useDeleteRecipeDraft(uid)
   const [filter, setFilter] = useState<DraftFilter>(DEFAULT_FILTER)
-  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
+  const [deleteTarget, setDeleteTarget] = useState<{
+    id: string
+    name: string
+  } | null>(null)
 
   const drafts = data ?? EMPTY_DRAFTS
-  const counts = useMemo(() => countBySpecies(drafts), [drafts])
-  const filtered = useMemo(
-    () => filterDrafts(drafts, filter),
-    [drafts, filter],
-  )
+  const filtered = useMemo(() => filterDrafts(drafts, filter), [drafts, filter])
 
   return (
     <div>
       <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
         <div>
-          <h1 className="text-title font-bold text-gray-800">레시피 목록</h1>
+          <h1 className="text-title font-bold text-gray-800">레시피 관리</h1>
           <p className="mt-1 text-helper text-gray-500">
-            recipeDrafts에 저장된 임시 레시피를 조회합니다.
+            제품별 원료 구성과 프리셋 기준을 관리하세요.
           </p>
         </div>
-        <div className="grid grid-cols-3 gap-2 text-center text-xs text-gray-500 sm:min-w-72">
-          <CountBox label="고양이" value={counts.cat} />
-          <CountBox label="강아지" value={counts.dog} />
-          <CountBox label="미지정" value={counts.none} />
+        <div className="flex flex-wrap items-center gap-3">
+          <Link className="prep-textbutton" to="/recipe-check">
+            레시피 비교·확인
+          </Link>
+          <Link className="prep-button prep-primary" to="/recipes/new">
+            ＋ 레시피 추가
+          </Link>
         </div>
       </div>
 
@@ -132,7 +138,7 @@ export function RecipesPage() {
               <option value="all">전체</option>
               <option value="cat">고양이</option>
               <option value="dog">강아지</option>
-              <option value="none">미지정</option>
+              <option value="none">공용</option>
             </select>
           </label>
 
@@ -190,7 +196,7 @@ export function RecipesPage() {
 
       {!isLoading && !isError && drafts.length === 0 && (
         <div className={`mt-4 ${EMPTY_STATE_CLS}`}>
-          레시피가 없습니다. 백업·복원에서 마이그레이션하세요.
+          레시피가 없습니다. 레시피 추가로 첫 제품을 등록하세요.
         </div>
       )}
 
@@ -224,7 +230,9 @@ export function RecipesPage() {
                     <td className="px-3 py-1.5 font-medium text-gray-800">
                       {draft.name}
                     </td>
-                    <td className="px-3 py-1.5">{speciesLabel(draft.species)}</td>
+                    <td className="px-3 py-1.5">
+                      {speciesLabel(draft.species)}
+                    </td>
                     <td className="px-3 py-1.5 text-gray-600">
                       {draft.category ?? '—'}
                     </td>
@@ -276,8 +284,12 @@ export function RecipesPage() {
           <div className="w-80 rounded-xl bg-white p-5 shadow-lg">
             <h2 className="text-sm font-semibold text-gray-800">레시피 삭제</h2>
             <p className="mt-2 text-sm text-gray-600">
-              <span className="font-medium text-gray-900">{deleteTarget.name}</span>을(를) 삭제합니다.
-              <br />삭제하면 복구할 수 없습니다.
+              <span className="font-medium text-gray-900">
+                {deleteTarget.name}
+              </span>
+              을(를) 삭제합니다.
+              <br />
+              삭제하면 복구할 수 없습니다.
             </p>
             <div className="mt-4 flex justify-end gap-2">
               <button
@@ -302,17 +314,6 @@ export function RecipesPage() {
           </div>
         </div>
       )}
-    </div>
-  )
-}
-
-function CountBox({ label, value }: { label: string; value: number }) {
-  return (
-    <div className="rounded-lg bg-white px-3 py-2 shadow-sm">
-      <div className="text-[11px] text-gray-400">{label}</div>
-      <div className="mt-0.5 text-base font-semibold text-gray-800">
-        {value}
-      </div>
     </div>
   )
 }

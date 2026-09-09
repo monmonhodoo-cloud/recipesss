@@ -2,7 +2,8 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { collection, deleteDoc, doc, getDocs, setDoc } from 'firebase/firestore'
 
 import { db } from '../../firebase'
-import type { SavedOrder } from '../../types/recipe'
+import type { SavedOrder, SavedOrderSnapshot } from '../../types/recipe'
+import { localDateKey } from './orderSnapshot'
 
 // 저장된 발주 (DL-039): recipesssOrders/{uid}/items/{orderId}
 
@@ -18,7 +19,10 @@ export function useSavedOrders(uid: string | undefined) {
         collection(db, `recipesssOrders/${uid as string}/items`),
       )
       return snap.docs
-        .map((docSnap) => ({ ...(docSnap.data() as SavedOrder), id: docSnap.id }))
+        .map((docSnap) => ({
+          ...(docSnap.data() as SavedOrder),
+          id: docSnap.id,
+        }))
         .sort((a, b) => b.createdAt - a.createdAt)
     },
     enabled: !!uid,
@@ -33,22 +37,42 @@ export function useSaveOrder(uid: string | undefined) {
     mutationFn: async ({
       presetIds,
       now,
+      snapshot,
     }: {
       presetIds: string[]
       now: number
+      snapshot: SavedOrderSnapshot
     }) => {
       if (!uid) throw new Error('로그인이 필요합니다.')
       if (presetIds.length === 0) throw new Error('선택된 프리셋이 없습니다.')
 
-      const id = `order_${crypto.randomUUID().replace(/-/g, '').slice(0, 8)}`
-      // 로컬(KST) 기준 날짜 — toISOString은 UTC라 저녁 저장 시 하루 밀림.
-      const d = new Date(now)
-      const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
-      const order: SavedOrder = { id, date, presetIds, createdAt: now }
+      if (
+        snapshot.items.length !== presetIds.length ||
+        snapshot.items.some((item) => !presetIds.includes(item.presetId))
+      ) {
+        throw new Error(
+          '선택한 프리셋과 저장할 내용이 다릅니다. 다시 시도해주세요.',
+        )
+      }
+      const id = `order_${crypto.randomUUID()}`
+      const date = localDateKey(now)
+      const order: SavedOrder = {
+        id,
+        date,
+        presetIds,
+        createdAt: now,
+        snapshot,
+      }
       await setDoc(orderRef(uid, id), order)
       return order
     },
-    onSuccess: () => queryClient.invalidateQueries({ queryKey }),
+    onSuccess: (order) => {
+      queryClient.setQueryData<SavedOrder[]>(queryKey, (previous) => [
+        order,
+        ...(previous ?? []).filter((item) => item.id !== order.id),
+      ])
+      return queryClient.invalidateQueries({ queryKey })
+    },
   })
 }
 

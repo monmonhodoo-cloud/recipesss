@@ -1,414 +1,361 @@
-import { useMemo, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-import { useQuery } from '@tanstack/react-query'
-
-import { countExistingDocs } from '../features/migration/runMigration'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { Link, useNavigate, useSearchParams } from 'react-router-dom'
+import { Printer, Save, Search } from 'lucide-react'
+import { PreparationProduct } from '../components/PreparationProduct'
+import { useIngredients } from '../features/ingredients/ingredientQueries'
 import {
-  buildOrderSummary,
   filterOrderGroups,
-  formatOrderLine,
-  formatPresetInput,
   groupPresetsByRecipe,
-  speciesLabel,
-  totalSelectedCount,
   type OrderFilter,
-  type OrderGroup,
-  type OrderSelection,
 } from '../features/orders/orderSelectors'
+import {
+  createOrderSnapshot,
+  isSamePreparation,
+  orderErrorMessage,
+  preparationIssues,
+} from '../features/orders/orderSnapshot'
 import { useSavedOrders, useSaveOrder } from '../features/orders/orderStorage'
-import { normalizeAllPresetCodes } from '../features/presets/presetCodes'
-import { useApplyDraftPresets } from '../features/presets/presetMutations'
 import { backfillPresetInputs } from '../features/presets/presetRatio'
 import { usePresets } from '../features/presets/presetQueries'
+import { buildPresetPrintViews } from '../features/print/printSelectors'
 import { useRecipeDrafts } from '../features/recipes/recipeQueries'
-import {
-  CARD_CLS,
-  EMPTY_STATE_CLS,
-  INPUT_CLS,
-  PRIMARY_BTN_CLS,
-  SECONDARY_BTN_CLS,
-} from '../lib/ui'
 import { useAuthStore } from '../stores/authStore'
-import type { Preset, RecipeDraft } from '../types/recipe'
+import type {
+  Ingredient,
+  Preset,
+  RecipeDraft,
+  SavedOrder,
+} from '../types/recipe'
 
 const EMPTY_DRAFTS: RecipeDraft[] = []
 const EMPTY_PRESETS: Preset[] = []
-const ORDER_FILTERS: Array<{ value: OrderFilter; label: string }> = [
-  { value: 'all', label: '전체' },
-  { value: 'cat', label: '고양이' },
-  { value: 'dog', label: '강아지' },
-  { value: 'freezeDried', label: '동결건조' },
+const EMPTY_INGREDIENTS: Ingredient[] = []
+const FILTERS: Array<[OrderFilter, string]> = [
+  ['cat', '고양이'],
+  ['dog', '강아지'],
+  ['freezeDried', '동결건조'],
 ]
 
 export function OrdersPage() {
-  const navigate = useNavigate()
   const uid = useAuthStore((state) => state.user?.uid)
+  const navigate = useNavigate()
+  const [params, setParams] = useSearchParams()
   const draftsQuery = useRecipeDrafts(uid)
   const presetsQuery = usePresets(uid)
-  const diagnosticsQuery = useQuery({
-    queryKey: ['recipesssCounts', uid],
-    queryFn: () => countExistingDocs(uid as string),
-    enabled: !!uid,
-  })
-  const applyPresets = useApplyDraftPresets(uid)
+  const ingredientsQuery = useIngredients(uid)
+  const ordersQuery = useSavedOrders(uid)
   const saveOrder = useSaveOrder(uid)
-  const savedOrdersQuery = useSavedOrders(uid)
-  const savedOrders = savedOrdersQuery.data ?? []
-  const [selection, setSelection] = useState<OrderSelection>({})
+  const saving = useRef<Promise<SavedOrder> | null>(null)
   const [filter, setFilter] = useState<OrderFilter>('all')
-  const [normalizeMsg, setNormalizeMsg] = useState('')
-  const [saveMsg, setSaveMsg] = useState('')
-
+  const [search, setSearch] = useState('')
+  const [onlySelected, setOnlySelected] = useState(false)
+  const [error, setError] = useState('')
+  const [now, setNow] = useState(Date.now)
+  useEffect(() => {
+    const timer = window.setInterval(() => setNow(Date.now()), 60000)
+    return () => window.clearInterval(timer)
+  }, [])
   const drafts = draftsQuery.data ?? EMPTY_DRAFTS
-  const presets = presetsQuery.data ?? EMPTY_PRESETS
-
-  async function handleNormalizeCodes() {
-    setNormalizeMsg('')
-    // ① 빈 투입량 백필 (v2 마이그레이션 잔재) → ② 그 결과로 크기순 재코딩.
-    const backfilled = backfillPresetInputs(presets, drafts)
-    const byId = new Map(backfilled.map((preset) => [preset.id, preset]))
-    for (const preset of normalizeAllPresetCodes(backfilled, drafts)) {
-      byId.set(preset.id, preset)
-    }
-    const originalById = new Map(presets.map((preset) => [preset.id, preset]))
-    const changed = [...byId.values()].filter((preset) => {
-      const original = originalById.get(preset.id)
-      return (
-        !original ||
-        original.code !== preset.code ||
-        original.sortOrder !== preset.sortOrder ||
-        original.inputAmount !== preset.inputAmount ||
-        original.inputUnitLabel !== preset.inputUnitLabel
-      )
-    })
-
-    if (changed.length === 0) {
-      setNormalizeMsg('이미 모두 정리돼 있습니다.')
-      return
-    }
-    try {
-      await applyPresets.mutateAsync({ upserts: changed, deleteIds: [] })
-      setNormalizeMsg(
-        `${changed.length}개 프리셋을 정리했습니다 (크기순 코드 + 빈 투입량 채움).`,
-      )
-    } catch (err) {
-      setNormalizeMsg(
-        err instanceof Error ? err.message : '재정렬에 실패했습니다.',
-      )
-    }
-  }
+  const rawPresets = presetsQuery.data ?? EMPTY_PRESETS
+  const ingredients = ingredientsQuery.data ?? EMPTY_INGREDIENTS
+  // 이전 프리셋의 빈 입력값은 표시할 때만 보완한다.
+  const presets = useMemo(
+    () => backfillPresetInputs(rawPresets, drafts),
+    [rawPresets, drafts],
+  )
+  const ids = useMemo(
+    () => [
+      ...new Set((params.get('presets') ?? '').split(',').filter(Boolean)),
+    ],
+    [params],
+  )
+  const selected = useMemo(() => new Set(ids), [ids])
   const groups = useMemo(
-    () => groupPresetsByRecipe(drafts, presets),
+    () =>
+      groupPresetsByRecipe(
+        drafts.filter((draft) => draft.status !== 'inactive'),
+        presets,
+        true,
+      ),
     [drafts, presets],
   )
-  const filteredGroups = useMemo(
-    () => filterOrderGroups(groups, filter),
-    [filter, groups],
+  const visibleGroups = filterOrderGroups(groups, filter).filter(
+    (group) =>
+      group.draftName
+        .toLocaleLowerCase()
+        .includes(search.trim().toLocaleLowerCase()) &&
+      (!onlySelected || group.presets.some((item) => selected.has(item.id))),
   )
-  // 요약은 필터와 무관하게 선택 전체 기준 (필터는 목록 표시용일 뿐).
-  const summary = useMemo(
-    () => buildOrderSummary(groups, selection),
-    [groups, selection],
+  const views = useMemo(
+    () => buildPresetPrintViews(ids, presets, drafts, ingredients),
+    [ids, presets, drafts, ingredients],
   )
+  const snapshot = useMemo(() => createOrderSnapshot(views), [views])
+  const issues = preparationIssues(ids, views, ingredients)
+  const missingAliases = [
+    ...new Set(
+      views.flatMap((view) =>
+        view.supplements
+          .filter(
+            (row) =>
+              !/난각/.test(row.name) &&
+              row.displayName.trim() === row.name.trim(),
+          )
+          .map((row) => row.name),
+      ),
+    ),
+  ]
+  const saved = ordersQuery.data?.find(
+    (item) => item.id === params.get('saved'),
+  )
+  const isSaved = isSamePreparation(saved, snapshot, now)
+  const loading =
+    draftsQuery.isLoading ||
+    presetsQuery.isLoading ||
+    ingredientsQuery.isLoading
+  const queryError =
+    draftsQuery.error ?? presetsQuery.error ?? ingredientsQuery.error
+  const canSave =
+    ids.length > 0 &&
+    !loading &&
+    !queryError &&
+    !issues.length &&
+    !saveOrder.isPending
 
-  const isLoading = draftsQuery.isLoading || presetsQuery.isLoading
-  const isError = draftsQuery.isError || presetsQuery.isError
-  const queryError = draftsQuery.error ?? presetsQuery.error
-  const selectedCount = totalSelectedCount(selection)
+  function select(idsToChange: string[], checked: boolean) {
+    const next = new Set(ids)
+    idsToChange.forEach((id) => (checked ? next.add(id) : next.delete(id)))
+    const nextParams = new URLSearchParams(params)
+    if (next.size) nextParams.set('presets', [...next].join(','))
+    else nextParams.delete('presets')
+    setParams(nextParams, { replace: true })
+    setError('')
+  }
 
-  function togglePreset(presetId: string, checked: boolean) {
-    setSelection((prev) => {
-      if (checked) return { ...prev, [presetId]: true }
-
-      const next = { ...prev }
-      delete next[presetId]
-      return next
+  async function ensureSaved(): Promise<SavedOrder> {
+    if (saved && isSamePreparation(saved, snapshot, Date.now())) return saved
+    if (saving.current) return saving.current
+    if (!canSave) throw new Error(issues[0] ?? '프리셋을 선택해주세요.')
+    const promise = saveOrder.mutateAsync({
+      presetIds: ids,
+      snapshot,
+      now: Date.now(),
     })
+    saving.current = promise
+    try {
+      const order = await promise
+      const next = new URLSearchParams(params)
+      next.set('saved', order.id)
+      setParams(next, { replace: true })
+      return order
+    } finally {
+      saving.current = null
+    }
+  }
+
+  async function saveAndPrint(format?: 'owner' | 'staff') {
+    setError('')
+    try {
+      const order = await ensureSaved()
+      if (format)
+        navigate(
+          `/print?${new URLSearchParams({ order: order.id, format, from: 'prepare' })}`,
+        )
+    } catch (err) {
+      setError(orderErrorMessage(err))
+    }
   }
 
   return (
-    <div>
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-title font-bold text-gray-800">발주</h1>
-          <p className="mt-1 text-helper text-gray-500">
-            프리셋을 선택해 이번 회차 발주 목록을 만듭니다.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <button
-            className={SECONDARY_BTN_CLS}
-            disabled={applyPresets.isPending || presets.length === 0}
-            onClick={() => void handleNormalizeCodes()}
-            title="모든 레시피의 프리셋 코드를 targetWeight 크기순(X0·X1…)으로 재부여하고, 비어 있는 투입량을 targetWeight에서 역산해 채웁니다 (DL-035)"
-            type="button"
-          >
-            {applyPresets.isPending ? '정리 중...' : '프리셋 정리 (크기순·투입량)'}
-          </button>
-          <div className="rounded-lg bg-white px-4 py-3 text-sm text-gray-500 shadow-sm">
-            선택 {selectedCount}개
-          </div>
-        </div>
-      </div>
-
-      {normalizeMsg && (
-        <div className="mt-3 rounded-md bg-gray-50 px-3 py-2 text-xs text-gray-600">
-          {normalizeMsg}
-        </div>
-      )}
-
-      {isLoading && (
-        <div className={`mt-4 ${EMPTY_STATE_CLS}`}>불러오는 중...</div>
-      )}
-
-      {isError && (
-        <div className="mt-4 rounded-lg bg-red-50 p-4 text-sm text-red-700 shadow-sm">
-          {queryError instanceof Error
-            ? queryError.message
-            : '발주 데이터를 불러오지 못했습니다.'}
-        </div>
-      )}
-
-      {!isLoading && !isError && groups.length === 0 && (
-        <div className={`mt-4 ${EMPTY_STATE_CLS}`}>
-          발주할 프리셋이 없습니다.
-          <OrderDiagnostics
-            counts={diagnosticsQuery.data}
-            isLoading={diagnosticsQuery.isLoading}
-            uid={uid}
-          />
-        </div>
-      )}
-
-      {!isLoading && !isError && groups.length > 0 && (
-        <>
-          <div className="mt-4 flex flex-wrap gap-2">
-            {ORDER_FILTERS.map((item) => (
-              <button
-                className={`rounded-md border px-3 py-1.5 text-sm font-medium ${
-                  filter === item.value
-                    ? 'border-gray-800 bg-gray-800 text-white'
-                    : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
-                }`}
-                key={item.value}
-                onClick={() => setFilter(item.value)}
-                type="button"
-              >
-                {item.label}
-              </button>
-            ))}
-          </div>
-
-          <div className="mt-4 grid gap-4 lg:grid-cols-[1fr_360px]">
-            <div className="space-y-2">
-              {filteredGroups.length === 0 ? (
-                <div className={EMPTY_STATE_CLS}>
-                  선택한 조건에 맞는 프리셋이 없습니다.
-                </div>
-              ) : (
-                filteredGroups.map((group) => (
-                  <OrderGroupCard
-                    group={group}
-                    key={group.draftId}
-                    onToggle={togglePreset}
-                    selection={selection}
-                  />
-                ))
-              )}
-            </div>
-
-            <aside className={`${CARD_CLS} self-start lg:sticky lg:top-4`}>
-              <div className="border-b border-gray-100 px-4 py-3">
-                <h2 className="text-sm font-semibold text-gray-800">
-                  발주 요약
-                </h2>
-                <p className="mt-1 text-xs text-gray-500">
-                  선택한 프리셋
-                </p>
-              </div>
-
-              {summary.length === 0 ? (
-                <div className="p-6 text-sm text-gray-400">
-                  프리셋을 선택하세요.
-                </div>
-              ) : (
-                <div className="space-y-2 p-4">
-                  {summary.map((group) => (
-                    <div
-                      className="rounded-lg bg-gray-50 px-3 py-2 font-mono text-sm text-gray-700"
-                      key={group.draftId}
-                    >
-                      {formatOrderLine(group)}
-                    </div>
-                  ))}
-                </div>
-              )}
-
-              <div className="space-y-2 border-t border-gray-100 p-4">
-                {/* 저장된 발주 불러오기 */}
-                {savedOrders.length > 0 && (
-                  <div className="space-y-1">
-                    <p className="text-xs text-gray-400">저장된 발주 불러오기</p>
-                    <select
-                      className={`${INPUT_CLS} text-xs`}
-                      defaultValue=""
-                      onChange={(e) => {
-                        const orderId = e.target.value
-                        if (!orderId) return
-                        const order = savedOrders.find((o) => o.id === orderId)
-                        if (!order) return
-                        const next: OrderSelection = {}
-                        order.presetIds.forEach((id) => { next[id] = true })
-                        setSelection(next)
-                        setSaveMsg(`${order.date} 발주 불러옴 (${order.presetIds.length}개 체크됨)`)
-                        e.target.value = ''
-                      }}
-                    >
-                      <option value="">— 선택 —</option>
-                      {savedOrders.map((o) => (
-                        <option key={o.id} value={o.id}>
-                          {o.date} · {o.presetIds.length}개
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                )}
-
-                <button
-                  className={`${PRIMARY_BTN_CLS} w-full`}
-                  disabled={selectedCount === 0}
-                  onClick={() =>
-                    navigate(`/print?presets=${Object.keys(selection).join(',')}`)
-                  }
-                  type="button"
-                >
-                  출력 미리보기 (출력 1·2)
-                </button>
-                <button
-                  className={`${SECONDARY_BTN_CLS} w-full`}
-                  disabled={selectedCount === 0 || saveOrder.isPending}
-                  onClick={() => {
-                    setSaveMsg('')
-                    saveOrder
-                      .mutateAsync({
-                        presetIds: Object.keys(selection),
-                        now: Date.now(),
-                      })
-                      .then((order) =>
-                        setSaveMsg(
-                          `${order.date} 발주 저장됨 — PDF 출력에서 재출력`,
-                        ),
-                      )
-                      .catch((err: unknown) =>
-                        setSaveMsg(
-                          err instanceof Error
-                            ? err.message
-                            : '발주 저장에 실패했습니다.',
-                        ),
-                      )
-                  }}
-                  type="button"
-                >
-                  {saveOrder.isPending ? '저장 중...' : '오늘 날짜로 발주 저장'}
-                </button>
-                {saveMsg && (
-                  <p className="text-center text-xs text-gray-500">{saveMsg}</p>
-                )}
-              </div>
-
-            </aside>
-          </div>
-        </>
-      )}
-    </div>
-  )
-}
-
-function OrderDiagnostics({
-  counts,
-  isLoading,
-  uid,
-}: {
-  counts:
-    | { recipeDrafts: number; ingredients: number; presets: number }
-    | undefined
-  isLoading: boolean
-  uid: string | undefined
-}) {
-  return (
-    <div className="mx-auto mt-4 max-w-xl rounded-md bg-gray-50 px-3 py-2 text-left text-xs text-gray-500">
-      <div>현재 uid: {uid ?? '-'}</div>
-      {isLoading || !counts ? (
-        <div className="mt-1">문서 수 확인 중...</div>
-      ) : (
-        <div className="mt-1">
-          recipeDrafts {counts.recipeDrafts} / presets {counts.presets} /
-          ingredients {counts.ingredients}
-        </div>
-      )}
-    </div>
-  )
-}
-
-function OrderGroupCard({
-  group,
-  onToggle,
-  selection,
-}: {
-  group: OrderGroup
-  onToggle: (presetId: string, checked: boolean) => void
-  selection: OrderSelection
-}) {
-  return (
-    <section className={CARD_CLS}>
-      <div className="flex flex-col gap-1 border-b border-gray-100 px-3 py-1.5 sm:flex-row sm:items-center sm:justify-between">
-        <h2 className="text-sm font-semibold text-gray-800">
-          ({speciesLabel(group.species)}){group.draftName}
-        </h2>
-        <span className="text-xs text-gray-400">
-          프리셋 {group.presets.length}개
-        </span>
-      </div>
-
-      <div className="flex flex-wrap gap-1.5 px-3 py-2">
-        {group.presets.map((preset) => {
-          const checked = Object.prototype.hasOwnProperty.call(
-            selection,
-            preset.id,
-          )
-
-          return (
-            <label
-              className={`inline-flex cursor-pointer items-center gap-1.5 rounded-md border px-2 py-1 text-sm ${
-                checked
-                  ? 'border-gray-800 bg-gray-800 text-white'
-                  : 'border-gray-200 bg-white text-gray-700 hover:bg-gray-50'
-              }`}
-              key={preset.id}
+    <div className="preparation-page">
+      <header className="prep-heading">
+        <h1>영양제 준비·출력</h1>
+        <p>필요한 프리셋을 체크하고, 한 번에 출력하세요.</p>
+      </header>
+      <label className="prep-search">
+        <Search size={16} aria-hidden="true" />
+        <input
+          type="search"
+          aria-label="제품 이름 검색"
+          placeholder="어떤 제품을 준비할까요?"
+          value={search}
+          onChange={(event) => setSearch(event.target.value)}
+        />
+      </label>
+      <div className="prep-tools">
+        <div className="prep-filters" aria-label="제품 분류">
+          {FILTERS.map(([value, label]) => (
+            <button
+              type="button"
+              key={value}
+              aria-pressed={filter === value}
+              onClick={() =>
+                setFilter((current) => (current === value ? 'all' : value))
+              }
             >
-              <input
-                checked={checked}
-                className="h-4 w-4 rounded border-gray-300"
-                onChange={(event) => onToggle(preset.id, event.target.checked)}
-                type="checkbox"
-              />
-              <span className="font-medium">{preset.code}</span>
-              <span className={checked ? 'text-gray-200' : 'text-gray-500'}>
-                {formatPresetInput(preset)}
-              </span>
-              {preset.label && (
-                <span
-                  className={checked ? 'text-gray-200' : 'text-gray-500'}
-                >
-                  {preset.label}
-                </span>
-              )}
-            </label>
-          )
-        })}
+              {label}
+            </button>
+          ))}
+        </div>
+        <button
+          type="button"
+          className="prep-textbutton"
+          aria-pressed={onlySelected}
+          onClick={() => setOnlySelected(!onlySelected)}
+        >
+          {onlySelected ? '모든 프리셋 보기' : '선택한 프리셋만 보기'}
+        </button>
       </div>
-    </section>
+      <div className="prep-outputbar">
+        <div>
+          <p className="prep-count" aria-live="polite">
+            프리셋 <strong>{ids.length}개</strong> 선택{' '}
+            <span>
+              · 제품 {new Set(views.map((view) => view.draft.id)).size}개
+            </span>
+          </p>
+          <button
+            type="button"
+            className="prep-textbutton"
+            disabled={!ids.length || saveOrder.isPending}
+            onClick={() => select(ids, false)}
+          >
+            선택 모두 해제
+          </button>
+        </div>
+        <div className="prep-outputactions">
+          <button
+            type="button"
+            className="prep-button"
+            disabled={!canSave}
+            onClick={() => void saveAndPrint('owner')}
+          >
+            <Printer size={16} />
+            대표용 A4 출력
+          </button>
+          <button
+            type="button"
+            className="prep-button prep-primary"
+            disabled={!canSave || missingAliases.length > 0}
+            onClick={() => void saveAndPrint('staff')}
+          >
+            <Printer size={16} />
+            직원용 A4 출력
+          </button>
+        </div>
+      </div>
+      <div className="prep-savebar">
+        <div className="prep-savegroup">
+          <button
+            type="button"
+            className="prep-button"
+            disabled={!canSave || isSaved}
+            onClick={() => void saveAndPrint()}
+          >
+            <Save size={15} />
+            {saveOrder.isPending
+              ? '저장 중…'
+              : isSaved
+                ? '저장됨'
+                : '준비 목록 저장'}
+          </button>
+          <span className="prep-meta" role="status">
+            {isSaved && saved
+              ? `${saved.date} ${new Date(saved.createdAt).toLocaleTimeString('ko-KR', { hour: '2-digit', minute: '2-digit', hour12: false })} · 저장됨`
+              : params.has('saved') && ids.length
+                ? '선택이 변경됐습니다. 저장하면 새 내역이 만들어집니다.'
+                : '출력하면 준비 내역에도 자동 저장됩니다.'}
+          </span>
+        </div>
+        <Link className="prep-textbutton" to="/history">
+          날짜별 준비 내역 →
+        </Link>
+      </div>
+      {error && (
+        <div className="prep-notice prep-error" role="alert">
+          {error}
+        </div>
+      )}
+      {!loading && !queryError && issues.length > 0 && (
+        <div className="prep-notice prep-error" role="alert">
+          {issues.map((issue) => (
+            <p key={issue}>{issue}</p>
+          ))}
+          <Link to="/recipes">레시피 관리 →</Link>
+        </div>
+      )}
+      {missingAliases.length > 0 && (
+        <div className="prep-notice">
+          직원용 치환명이 없는 영양제: {missingAliases.join(', ')}.{' '}
+          <Link to="/ingredients">치환명 설정 후 직원용 출력 →</Link>
+        </div>
+      )}
+      {loading ? (
+        <div className="prep-empty">불러오는 중...</div>
+      ) : queryError ? (
+        <div className="prep-notice prep-error" role="alert">
+          {orderErrorMessage(queryError)}
+          <button
+            className="prep-textbutton"
+            type="button"
+            onClick={() => {
+              void draftsQuery.refetch()
+              void presetsQuery.refetch()
+              void ingredientsQuery.refetch()
+            }}
+          >
+            다시 불러오기
+          </button>
+        </div>
+      ) : (
+        <section className="prep-list" aria-label="제품별 프리셋 목록">
+          <div className="prep-listheader">
+            <span>
+              제품 {visibleGroups.length}개 · 프리셋을 여러 개 선택할 수 있어요
+            </span>
+            <button
+              className="prep-textbutton"
+              type="button"
+              disabled={saveOrder.isPending}
+              onClick={() =>
+                select(
+                  visibleGroups
+                    .filter(
+                      (group) =>
+                        !drafts.find((draft) => draft.id === group.draftId)
+                          ?.mergeReviewPending,
+                    )
+                    .flatMap((group) => group.presets.map((item) => item.id)),
+                  true,
+                )
+              }
+            >
+              현재 목록 전체 선택
+            </button>
+          </div>
+          {visibleGroups.length ? (
+            visibleGroups.map((group) => (
+              <PreparationProduct
+                key={group.draftId}
+                group={group}
+                draft={drafts.find((draft) => draft.id === group.draftId)!}
+                drafts={drafts}
+                presets={presets}
+                ingredients={ingredients}
+                selected={selected}
+                onSelect={select}
+                uid={uid}
+                busy={saveOrder.isPending}
+              />
+            ))
+          ) : (
+            <div className="prep-empty">
+              조건에 맞는 제품이 없습니다.
+              {!groups.length && <Link to="/recipes/new"> 레시피 추가 →</Link>}
+            </div>
+          )}
+        </section>
+      )}
+    </div>
   )
 }
-
-export default OrdersPage

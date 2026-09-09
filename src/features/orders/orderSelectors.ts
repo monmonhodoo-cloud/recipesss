@@ -5,6 +5,7 @@ export type OrderGroup = {
   draftName: string
   species: Species
   unitLabel: string
+  category?: RecipeDraft['category']
   presets: Preset[]
 }
 
@@ -24,7 +25,7 @@ const CODE_RE = /^([A-Za-z])(\d+)$/
 export function speciesLabel(species: Species): string {
   if (species === 'cat') return '고양이'
   if (species === 'dog') return '강아지'
-  return '미지정'
+  return '공용'
 }
 
 export function groupLabel(draft: RecipeDraft): string {
@@ -34,6 +35,7 @@ export function groupLabel(draft: RecipeDraft): string {
 export function groupPresetsByRecipe(
   drafts: RecipeDraft[],
   presets: Preset[],
+  includeEmpty = false,
 ): OrderGroup[] {
   const presetsByDraft = new Map<string, Preset[]>()
 
@@ -47,7 +49,8 @@ export function groupPresetsByRecipe(
     .sort((a, b) => a.sortOrder - b.sortOrder)
     .flatMap((draft) => {
       const draftPresets = presetsByDraft.get(draft.id)
-      if (!draftPresets || draftPresets.length === 0) return []
+      if (!includeEmpty && (!draftPresets || draftPresets.length === 0))
+        return []
 
       return [
         {
@@ -55,7 +58,8 @@ export function groupPresetsByRecipe(
           draftName: draft.name,
           species: draft.species,
           unitLabel: draft.unitLabel,
-          presets: sortPresetsForOrders(draftPresets),
+          category: draft.category,
+          presets: sortPresetsForOrders(draftPresets ?? []),
         },
       ]
     })
@@ -72,7 +76,8 @@ function comparePresetCode(a: Preset, b: Preset): number {
   if (parsedA && parsedB) {
     const prefix = parsedA.prefix.localeCompare(parsedB.prefix)
     if (prefix !== 0) return prefix
-    if (parsedA.suffix !== parsedB.suffix) return parsedA.suffix - parsedB.suffix
+    if (parsedA.suffix !== parsedB.suffix)
+      return parsedA.suffix - parsedB.suffix
   } else if (parsedA || parsedB) {
     return parsedA ? -1 : 1
   }
@@ -82,7 +87,9 @@ function comparePresetCode(a: Preset, b: Preset): number {
   return a.sortOrder - b.sortOrder
 }
 
-function parsePresetCode(code: string): { prefix: string; suffix: number } | null {
+function parsePresetCode(
+  code: string,
+): { prefix: string; suffix: number } | null {
   const match = CODE_RE.exec(code.trim())
   if (!match) return null
   return { prefix: match[1]!.toUpperCase(), suffix: Number(match[2]) }
@@ -133,7 +140,11 @@ export function filterOrderGroups(
     return groups.filter((group) => group.species === 'dog')
   }
 
-  return groups.filter((group) => isFreezeDriedName(group.draftName))
+  return groups.filter((group) =>
+    group.category
+      ? group.category === '동결건조' || group.category === '동결텐더'
+      : isFreezeDriedName(group.draftName),
+  )
 }
 
 function isFreezeDriedName(name: string): boolean {

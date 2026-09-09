@@ -80,7 +80,7 @@ export function RecipeNewPage() {
           >
             <option value="cat">고양이</option>
             <option value="dog">강아지</option>
-            <option value="none">미지정</option>
+            <option value="none">공용</option>
           </select>
         </label>
 

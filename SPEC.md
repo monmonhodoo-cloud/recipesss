@@ -436,7 +436,7 @@ fant-e5ae5/
 ├── recipesssOrders/                        ← 저장된 발주 (DL-039)
 │   └── {uid}/
 │       └── items/
-│           └── {orderId}                    ← SavedOrder { date, presetIds[] }
+│           └── {orderId}                    ← SavedOrder { date, presetIds[], snapshot? }
 │
 └── (기존 운영·생산앱 컬렉션 그대로)
 ```
@@ -457,7 +457,12 @@ fant-e5ae5/
 
 ## 5. 화면 명세
 
-### 5.1 사이드바 메뉴 트리 (DL-024 — 재정의)
+### 5.1 사이드바 메뉴 트리 (DL-041 — 2026-09-09 사용자 승인)
+
+현재 기본 화면은 `/orders` **영양제 준비·출력**이다. 메인 메뉴는 이 화면과
+`/history` **준비 내역**, `/recipes` **레시피 관리**, `/ingredients` **원료·영양제 관리**의
+네 항목이다. 신규 레시피·레시피 비교는 레시피 관리에서 접근한다. 단가·백업복원 메뉴는
+제거하고 구 `/prices`, `/settings` 주소는 준비 화면으로 이동한다. 아래 트리는 DL-041 이전 기록이다.
 
 ```
 (/ = /recipes 리다이렉트 — 대시보드 메뉴 제거, 2026-06-12)
@@ -555,6 +560,10 @@ fant-e5ae5/
 
 ### 5.5 프리셋 설정 — 레시피 상세 (`/recipes/:draftId`) — DL-035 (DL-026 개정)
 
+**DL-041 개정**: 주 입력 위치는 `/orders`의 각 제품 옆 **프리셋 추가**이다.
+레시피에 설정한 기준 원료로 값을 입력하고 서버 저장한다. 기준 원료 변경·기존 프리셋 편집은
+레시피 관리에서 유지한다. 사용자 용어는 **프리셋 값**으로 통일한다. 자동 환산과 크기순 코드 규칙은 유지한다.
+
 별도 페이지가 아니라 **레시피 상세 화면에 통합**. `/recipes` 목록에서 레시피 클릭 →
 상세 화면. v2 "결과 탭" 방식. (구 `/presets` 페이지·메뉴 제거.)
 
@@ -578,6 +587,19 @@ targetWeight 순으로 **고정** — 프리셋 드래그 수동 정렬은 **없
 
 ### 5.6 발주 (`/orders`) — DL-026, 간결 표시
 
+**DL-041 대체**: 화면 이름은 **영양제 준비·출력**. 검색·종/동결 필터, 제품별 프리셋 체크,
+제품 전체/표시 목록 전체 선택, 실제명·치환명·중량 펼쳐보기를 제공한다. 프리셋이 없는 제품도
+표시해 즉시 추가할 수 있다. 동결건조 필터는 등록 카테고리(동결텐더 포함)를 우선하고 미분류만 이름으로 보완한다.
+분류가 설정되지 않은 제품은 종만 표시하며 ‘미분류’ 문구는 노출하지 않는다.
+분류 토글은 고양이·강아지·동결건조 세 개만 표시한다. 처음에는 전체 목록을 보여주며, 선택한 분류를 다시 누르면 필터를 해제한다.
+**준비 목록 저장** 또는 두 A4 출력 버튼은 `recipesssOrders/{uid}/items/{id}`에 저장 성공한 뒤 진행한다.
+새 내역은 `snapshot.version=1`, 프리셋별 당시 제품명·코드·입력값·실제 영양제명·치환명·환산중량과
+두 출력 양식 결과를 저장한다. 같은 날짜·같은 내용의 저장된 선택은 양식 전환 시 중복 저장하지 않는다.
+`/history`는 날짜별 내역·날짜 찾기·내용 펼치기·두 양식 재출력·확인 후 삭제를 제공한다.
+ID만 있는 예전 내역은 당시 수치를 복원할 수 없음을 안내한 뒤 현재 데이터 미리보기를 선택하게 한다.
+끊긴 원료·프리셋 연결, 미확인 병합·중복 코드는 저장 전에 표시한다. 치환명 없는 영양제는 직원용에서
+조용히 빠지지 않도록 설정 안내 후 직원용 출력을 막는다. 계산식과 출력 문서의 구성은 DL-038을 유지한다.
+
 정의된 프리셋을 선택해 이번 회차 주문량 입력.
 
 - 표시 양식: 제품 그룹별로 한 줄 한 줄 짧게
@@ -591,6 +613,9 @@ targetWeight 순으로 **고정** — 프리셋 드래그 수동 정렬은 **없
 
 ### 5.7 PDF 출력 (`/print?presets=...`) — 출력 1·2 두 버전 (DL-038)
 
+DL-041 이후 기본 주소는 `/print?order=<id>&format=owner|staff`이다. 새 내역 재출력은
+원본 레시피·프리셋의 현재 값이나 존재 여부에 의존하지 않는다. 구 `presets` 링크도 현재 데이터 미리보기로 호환한다.
+
 `@react-pdf/renderer` 사용. A4 portrait.
 
 **출력 1**: 현 recipesss "출력 1" 양식 (난각분만 표). 프리셋 코드 헤더 옆에
@@ -603,9 +628,13 @@ targetWeight 순으로 **고정** — 프리셋 드래그 수동 정렬은 **없
 
 ### 5.8 단가 관리 (`/prices`)
 
+DL-041: 사용자 요청으로 메뉴 제거. 구 주소는 `/orders`로 이동한다.
+
 플레이스홀더 페이지. "생산관리앱과 통합 작업 중" 안내. 인터페이스 결정 후 구현.
 
 ### 5.9 백업·복원 (`/settings`)
+
+DL-041: 사용자 요청으로 메뉴 제거. 구 주소는 `/orders`로 이동한다. 보관된 백업 데이터는 유지한다.
 
 - 현재 상태 JSON export (recipeDrafts + 원료 + 프리셋)
 - JSON 업로드 → 마이그레이션 + 적용
@@ -1174,6 +1203,7 @@ Firebase 는 읽기전용(DL-019)이라 스냅샷 이후 변경분이 없다는 
 | **DL-037** | 2026-06-09 | **생산앱 recipes 스키마 정합 + 등록 부분-create 계약. SPEC §4.2/§6.6 이전 모델(species·composition·unitLabel)은 stale → 생산앱 실스키마(target·category·ingredients[baseWeightG/unitName/isProductionUnit/meatType] ·active·Timestamp·productionMethods 등)로 개정. 등록 = 영양제 제외 + active:false 부분 create + source/recipesssDraftId 추적, create-only(기존 문서 미수정), 재푸시 deferred. 생산 전용 필드(category·bagTypeId·packWeightG 등)는 호두님이 생산앱에서 보완.** | 등록 구현 직전 `fant-production` recipes 백업·spec v26 대조 → SPEC Recipe 모델이 실제와 크게 다름 확인(컬렉션 오염 위험). 잘못 push 방지 위해 정합 먼저(A). target(cat/dog/null→?)·category 기본값은 호두님(생산앱 owner) 확정 필요. 권한: `recipes` write=`isProductionWriter()`라 recipesss 토큰에 production writer 없으면 막힘 → 규칙 넓히지 말고 recipes에 recipesss-create 전용 최소 규칙 추가(호두님 claims 확인 후). |
 | **DL-036** | 2026-06-05 | **Firestore 규칙 배포 단일화: recipesss `firestore.rules`가 3앱 정본, 다른 repo는 규칙 배포 금지(`firebase.json`에서 firestore 타깃 제거). DL-033 잔존 리스크의 영구 해법.** | DL-033 후에도 권한 소실 재발 → 원인 확정: `fantapet-inventory/firestore.rules.draft`·`fant-inv-cutover/firestore.rules.draft`·`fant-production/firestore.rules` 3개에 recipesss 블록(recipeDrafts·recipesssIngredients·recipesssPresets, +usdaCache)이 없어, 그 repo들이 규칙 포함 배포할 때마다 recipesss가 죽음. 블록 복제 동기화(A안)는 영구적 수작업 의존이라 또 깨짐 → 다른 repo가 규칙을 **배포 못 하게** 막는 단일화(B안)가 유일한 구조적 해법. 정본 파일 상단에 배너 명시. 신규 컬렉션 규칙도 이 파일에만. deploy·3앱 firebase.json 정리는 호두님(access control). |
 | **DL-035** | 2026-06-05 | **프리셋 설정 = 레시피 상세 화면(`/recipes/:draftId`)에 통합(별도 `/presets` 페이지·메뉴 제거). 프리셋 입력 = 생산단위 원료 select + 생산량 → `targetWeight`/`ratio`/`inputUnitLabel` 자동 도출(§6.7 v2 `getRatioInfo` 포팅). 자동 코드 = draft 내 `targetWeight` 오름차순 X0·X1…(`normalizePresetCodes`), 코드 suffix·표시순서 둘 다 targetWeight 순 고정 → 프리셋 드래그 정렬(0.5-G) 미적용. DL-026 개정.** | 0.5-D/E/F/G의 별도 `/presets`가 호두님 실제 워크플로우(v2 결과 탭)와 어긋나 코드·생산단위가 꼬임. v2로 회귀: 레시피 클릭 → 그 화면에서 생산량 입력 → 환산·자동코드. 코드를 크기순으로 고정하면 수동 정렬 불필요(예측가능·결정적). 이번 범위(②)는 최소 — 레시피 헤더+프리셋 패널만; 영양 매트릭스·구성표·원가는 1-D에서 같은 `/recipes/:draftId`에 추가. 마이그레이션 프리셋(~100)도 첫 저장 시 자동 재코딩. |
+| **DL-041** | 2026-09-09 | **사용자 승인 시안으로 준비·출력 중심 UI 변경. 네 메뉴, 제품별 프리셋 추가·영양제 확인, 준비 목록 저장·출력 전 자동 저장, 날짜별 스냅샷 재출력.** DL-024/026/035의 메뉴·입력 위치와 DL-039의 ID-only 저장을 본문 §5에서 개정. 계산·PDF 두 양식·인증/공유 Firestore 권한은 유지. | 공동 대표의 쉬운 조회와 수십 프리셋 일괄 출력, 저장 당시 수치의 정확한 재출력 요구. 과거 ID-only 기록은 복원 가능하다고 주장하지 않고 별도 안내. |
 
 ### 결정 변경 절차
 1. 변경 사유와 영향 범위를 §13 새 행으로 추가. 이전 행은 두고 ~~취소선~~ + supersede.

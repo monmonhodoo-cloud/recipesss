@@ -70,7 +70,7 @@ function scoreFdcFood(food: FdcFoodSearchItem, query: string): number {
   const normalizedQuery = query.trim().toLowerCase()
   const dataTypeScore = dataTypePriority(food.dataType)
 
-  let score = dataTypeScore * 10
+  let score = dataTypeScore * 100
   if (description === normalizedQuery) score -= 130
   if (description.startsWith(`${normalizedQuery},`)) score -= 110
   if (description.startsWith(normalizedQuery)) score -= 80
@@ -96,8 +96,8 @@ function scoreFdcFood(food: FdcFoodSearchItem, query: string): number {
 }
 
 function dataTypePriority(dataType: string | undefined): number {
-  if (dataType === 'Foundation') return 0
-  if (dataType === 'SR Legacy') return 1
+  if (dataType === 'SR Legacy') return 0
+  if (dataType === 'Foundation') return 1
   if (dataType === 'Survey (FNDDS)') return 2
   if (dataType === 'Branded') return 30
   return 5

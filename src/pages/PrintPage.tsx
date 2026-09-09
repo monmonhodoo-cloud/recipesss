@@ -1,9 +1,13 @@
 import { PDFDownloadLink, PDFViewer } from '@react-pdf/renderer'
 import { useMemo, useState } from 'react'
 import { Link, useSearchParams } from 'react-router-dom'
-
 import { useIngredients } from '../features/ingredients/ingredientQueries'
-import { useDeleteOrder, useSavedOrders } from '../features/orders/orderStorage'
+import { useSavedOrders } from '../features/orders/orderStorage'
+import {
+  localDateKey,
+  orderErrorMessage,
+  preparationIssues,
+} from '../features/orders/orderSnapshot'
 import { usePresets } from '../features/presets/presetQueries'
 import { OrderPdf1, OrderPdf2 } from '../features/print/OrderPdf'
 import {
@@ -12,192 +16,191 @@ import {
   buildPresetPrintViews,
 } from '../features/print/printSelectors'
 import { useRecipeDrafts } from '../features/recipes/recipeQueries'
-import { EMPTY_STATE_CLS, INPUT_CLS, PRIMARY_BTN_CLS, SECONDARY_BTN_CLS } from '../lib/ui'
 import { useAuthStore } from '../stores/authStore'
-
-type PrintTab = 'view1' | 'view2'
 
 export function PrintPage() {
   const uid = useAuthStore((state) => state.user?.uid)
-  const [searchParams, setSearchParams] = useSearchParams()
-  const draftsQuery = useRecipeDrafts(uid)
-  const presetsQuery = usePresets(uid)
-  const ingredientsQuery = useIngredients(uid)
-  const savedOrdersQuery = useSavedOrders(uid)
-  const deleteOrder = useDeleteOrder(uid)
-  const [tab, setTab] = useState<PrintTab>('view1')
-
+  const [params, setParams] = useSearchParams()
+  const ordersQuery = useSavedOrders(uid)
+  const orderId = params.get('order') ?? ''
+  const order = ordersQuery.data?.find((item) => item.id === orderId)
+  const snapshot = order?.snapshot
+  // 과거 내역은 현재 원본의 조회·재계산에 의존하지 않는다.
+  const needsCurrentData =
+    !orderId || (ordersQuery.isSuccess && !!order && !snapshot)
+  const draftsQuery = useRecipeDrafts(needsCurrentData ? uid : undefined)
+  const presetsQuery = usePresets(needsCurrentData ? uid : undefined)
+  const ingredientsQuery = useIngredients(needsCurrentData ? uid : undefined)
+  const [acceptedLegacyId, setAcceptedLegacyId] = useState('')
+  const [openedAt] = useState(Date.now)
+  const format = params.get('format') === 'staff' ? 'staff' : 'owner'
   const selectedIds = useMemo(
-    () => (searchParams.get('presets') ?? '').split(',').filter(Boolean),
-    [searchParams],
+    () =>
+      order?.presetIds ??
+      (params.get('presets') ?? '').split(',').filter(Boolean),
+    [order, params],
   )
-  const selectedOrderId = searchParams.get('order') ?? ''
-  const savedOrders = savedOrdersQuery.data ?? [] // 최신순 (createdAt desc)
-
-  function handlePickOrder(orderId: string) {
-    if (!orderId) return
-    const order = savedOrders.find((item) => item.id === orderId)
-    if (!order) return
-    setSearchParams({ presets: order.presetIds.join(','), order: order.id })
-  }
-
-  async function handleDeleteOrder() {
-    if (!selectedOrderId) return
-    await deleteOrder.mutateAsync(selectedOrderId)
-    setSearchParams({})
-  }
-
-  const isLoading =
-    draftsQuery.isLoading || presetsQuery.isLoading || ingredientsQuery.isLoading
-
   const views = useMemo(
     () =>
-      buildPresetPrintViews(
-        selectedIds,
-        presetsQuery.data ?? [],
-        draftsQuery.data ?? [],
-        ingredientsQuery.data ?? [],
-      ),
-    [selectedIds, presetsQuery.data, draftsQuery.data, ingredientsQuery.data],
+      needsCurrentData
+        ? buildPresetPrintViews(
+            selectedIds,
+            presetsQuery.data ?? [],
+            draftsQuery.data ?? [],
+            ingredientsQuery.data ?? [],
+          )
+        : [],
+    [
+      needsCurrentData,
+      selectedIds,
+      presetsQuery.data,
+      draftsQuery.data,
+      ingredientsQuery.data,
+    ],
   )
-  const outputOne = useMemo(() => buildOutputOne(views), [views])
-  const outputTwo = useMemo(() => buildOutputTwo(views), [views])
-
+  const outputOne = useMemo(
+    () => snapshot?.outputOne ?? buildOutputOne(views),
+    [snapshot, views],
+  )
+  const outputTwo = useMemo(
+    () => snapshot?.outputTwo ?? buildOutputTwo(views),
+    [snapshot, views],
+  )
+  const isLoading =
+    (Boolean(orderId) && ordersQuery.isLoading) ||
+    (needsCurrentData &&
+      (draftsQuery.isLoading ||
+        presetsQuery.isLoading ||
+        ingredientsQuery.isLoading))
+  const error =
+    orderId && ordersQuery.error
+      ? ordersQuery.error
+      : needsCurrentData
+        ? (draftsQuery.error ?? presetsQuery.error ?? ingredientsQuery.error)
+        : null
+  const legacy = Boolean(order && !snapshot)
+  const issues =
+    !snapshot && needsCurrentData
+      ? preparationIssues(selectedIds, views, ingredientsQuery.data ?? [])
+      : []
+  const supplements = snapshot
+    ? snapshot.items.flatMap((item) => item.supplements)
+    : views.flatMap((item) => item.supplements)
+  const missingAlias = supplements.some(
+    (row) =>
+      !/난각/.test(row.name) && row.name.trim() === row.displayName.trim(),
+  )
+  const ready =
+    !isLoading &&
+    !error &&
+    selectedIds.length > 0 &&
+    (!orderId || !!order) &&
+    !issues.length &&
+    (!legacy || acceptedLegacyId === orderId) &&
+    (format !== 'staff' || !missingAlias)
   const doc =
-    tab === 'view1' ? (
+    format === 'owner' ? (
       <OrderPdf1 groups={outputOne} />
     ) : (
       <OrderPdf2 output={outputTwo} />
     )
-  // 파일명: 저장된 발주 선택 시 그 날짜, 아니면 오늘 (로컬).
-  const orderDate = savedOrders.find((o) => o.id === selectedOrderId)?.date
-  const now = new Date()
-  const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
-  const fileDate = orderDate ?? today
-  const fileName =
-    tab === 'view1'
-      ? `${fileDate} 영양제_대표.pdf`
-      : `${fileDate} 영양제_직원.pdf`
+  const fileDate = order?.date ?? localDateKey(openedAt)
+  const fileName = `${fileDate} 영양제_${format === 'owner' ? '대표' : '직원'}.pdf`
+  const fromPrepare = params.get('from') === 'prepare'
+  const returnTo = fromPrepare
+    ? `/orders?${new URLSearchParams({ presets: selectedIds.join(','), ...(orderId ? { saved: orderId } : {}) })}`
+    : '/history'
 
   return (
-    <div>
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-title font-bold text-gray-800">PDF 출력</h1>
-          <p className="mt-1 text-helper text-gray-500">
-            발주에서 선택한 프리셋 {selectedIds.length}개 · 출력 1(난각분) ·
-            출력 2(영양제 치환명)
-          </p>
-        </div>
-        <Link className="text-sm text-gray-500 hover:text-gray-800" to="/orders">
-          ← 발주로 돌아가기
+    <div className="preparation-page">
+      <header className="prep-heading">
+        <h1>{format === 'owner' ? '대표용' : '직원용'} A4 미리보기</h1>
+        <p>
+          {fileDate} · 프리셋 {selectedIds.length}개 ·{' '}
+          {snapshot ? '저장 당시 이름·코드·중량' : '현재 레시피 기준'}
+        </p>
+      </header>
+      <div className="prep-tools">
+        <Link className="prep-textbutton" to={orderId ? returnTo : '/orders'}>
+          ← {fromPrepare || !orderId ? '프리셋 선택으로' : '준비 내역으로'}
         </Link>
-      </div>
-
-      <div className="mt-4 flex flex-wrap items-end gap-2">
-        <label className="block">
-          <span className="mb-1 block text-xs font-medium text-gray-500">
-            저장된 발주 (최신순)
-          </span>
-          <select
-            className={`${INPUT_CLS} min-w-64`}
-            onChange={(event) => handlePickOrder(event.target.value)}
-            value={selectedOrderId}
-          >
-            <option value="">
-              {savedOrders.length === 0
-                ? '저장된 발주 없음'
-                : '저장된 발주 선택...'}
-            </option>
-            {savedOrders.map((order) => (
-              <option key={order.id} value={order.id}>
-                {order.date} · 프리셋 {order.presetIds.length}개
-              </option>
-            ))}
-          </select>
-        </label>
-        {selectedOrderId && (
+        <div className="prep-recordactions">
           <button
-            className={SECONDARY_BTN_CLS}
-            disabled={deleteOrder.isPending}
-            onClick={() => void handleDeleteOrder()}
             type="button"
+            className="prep-button"
+            onClick={() => {
+              const next = new URLSearchParams(params)
+              next.set('format', format === 'owner' ? 'staff' : 'owner')
+              setParams(next, { replace: true })
+            }}
           >
-            이 발주 삭제
+            {format === 'owner' ? '직원용으로 보기' : '대표용으로 보기'}
           </button>
-        )}
-        {savedOrdersQuery.isError && (
-          <p className="text-xs text-red-600">
-            저장된 발주 조회 실패:{' '}
-            {savedOrdersQuery.error instanceof Error
-              ? savedOrdersQuery.error.message
-              : '알 수 없는 오류'}{' '}
-            — 권한 오류면 recipesssOrders 규칙이 라이브에 없는 것(재고관리 정본에
-            반영·배포 필요, DL-040).
-          </p>
-        )}
-      </div>
-
-      {selectedIds.length === 0 && (
-        <div className={`mt-4 ${EMPTY_STATE_CLS}`}>
-          발주 탭에서 프리셋을 선택하거나 위에서 저장된 발주를 선택하세요.
-        </div>
-      )}
-
-      {selectedIds.length > 0 && isLoading && (
-        <div className={`mt-4 ${EMPTY_STATE_CLS}`}>불러오는 중...</div>
-      )}
-
-      {selectedIds.length > 0 && !isLoading && views.length === 0 && (
-        <div className={`mt-4 ${EMPTY_STATE_CLS}`}>
-          선택한 프리셋을 찾을 수 없습니다.
-        </div>
-      )}
-
-      {selectedIds.length > 0 && !isLoading && views.length > 0 && (
-        <>
-          <div className="mt-4 flex flex-wrap items-center gap-2">
-            <div className="flex overflow-hidden rounded-lg border border-gray-300 text-sm">
-              {(
-                [
-                  ['view1', '출력 1'],
-                  ['view2', '출력 2'],
-                ] as Array<[PrintTab, string]>
-              ).map(([value, label]) => (
-                <button
-                  className={
-                    tab === value
-                      ? 'bg-gray-800 px-4 py-2 text-white'
-                      : 'bg-white px-4 py-2 text-gray-600 hover:bg-gray-50'
-                  }
-                  key={value}
-                  onClick={() => setTab(value)}
-                  type="button"
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-
+          {ready && (
             <PDFDownloadLink
-              className={PRIMARY_BTN_CLS}
+              className="prep-button prep-primary"
               document={doc}
               fileName={fileName}
             >
-              {({ loading }) => (loading ? '생성 중...' : 'PDF 다운로드')}
+              {({ loading }) => (loading ? 'PDF 생성 중…' : 'PDF 다운로드')}
             </PDFDownloadLink>
-          </div>
-
-          <div className="mt-4 h-[75vh] overflow-hidden rounded-lg shadow-sm">
-            <PDFViewer
-              key={tab}
-              showToolbar
-              style={{ border: 0, height: '100%', width: '100%' }}
+          )}
+        </div>
+      </div>
+      {isLoading && <div className="prep-empty">불러오는 중...</div>}
+      {error && (
+        <div className="prep-notice prep-error" role="alert">
+          {orderErrorMessage(error)}
+        </div>
+      )}
+      {!isLoading && orderId && !error && !order && (
+        <div className="prep-empty">저장된 준비 내역을 찾을 수 없습니다.</div>
+      )}
+      {!orderId && !selectedIds.length && (
+        <div className="prep-empty">
+          <Link to="/orders">프리셋을 선택하거나</Link>{' '}
+          <Link to="/history">준비 내역에서 재출력해주세요.</Link>
+        </div>
+      )}
+      {legacy && (
+        <div className="prep-notice">
+          이 내역에는 당시 중량이 저장되어 있지 않습니다. 프리셋이 바뀌었다면
+          과거 출력물과 다를 수 있습니다.
+          {acceptedLegacyId !== orderId && (
+            <button
+              className="prep-button"
+              type="button"
+              onClick={() => setAcceptedLegacyId(orderId)}
             >
-              {doc}
-            </PDFViewer>
-          </div>
-        </>
+              현재 데이터로 미리보기
+            </button>
+          )}
+        </div>
+      )}
+      {!isLoading && !error && issues.length > 0 && (
+        <div className="prep-notice prep-error" role="alert">
+          {issues.map((item) => (
+            <p key={item}>{item}</p>
+          ))}
+        </div>
+      )}
+      {format === 'staff' && missingAlias && (
+        <div className="prep-notice prep-error">
+          치환명이 없는 영양제가 포함되어 직원용 출력이 중단되었습니다.{' '}
+          <Link to="/ingredients">원료·영양제 관리</Link>에서 수정한 후 새 준비
+          목록으로 저장해주세요.
+        </div>
+      )}
+      {ready && (
+        <div className="prep-pdfviewer">
+          <PDFViewer
+            key={`${orderId}-${format}`}
+            showToolbar
+            style={{ border: 0, height: '100%', width: '100%' }}
+          >
+            {doc}
+          </PDFViewer>
+        </div>
       )}
     </div>
   )

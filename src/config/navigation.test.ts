@@ -2,42 +2,40 @@ import { describe, expect, it } from 'vitest'
 
 import { navigationGroups } from './navigation'
 
-// SPEC §5.1 / DL-024 / DL-026 / DL-035 메뉴 트리 회귀 방지.
+// SPEC §5.1 / DL-041 승인한 네 메뉴의 회귀 방지.
 
 describe('navigation', () => {
   it('SPEC §5.1 모든 경로 존재', () => {
     const paths = navigationGroups.flatMap((g) => g.items.map((i) => i.path))
-    expect(paths).not.toContain('/') // 대시보드 제거 — 루트는 /recipes 리다이렉트
-    expect(paths).toContain('/recipes/new')
+    expect(paths).not.toContain('/')
+    expect(paths).toContain('/history')
     expect(paths).toContain('/recipes')
     expect(paths).toContain('/ingredients')
     expect(paths).toContain('/orders')
-    expect(paths).toContain('/print')
-    expect(paths).toContain('/prices')
-    expect(paths).toContain('/settings')
+    expect(paths).toHaveLength(4)
   })
 
-  it('발주 그룹은 2페이지 (발주·PDF — 프리셋 설정은 레시피 상세로 이동, DL-035)', () => {
-    const orderGroup = navigationGroups.find((g) => g.id === 'orders')
+  it('자주 쓰는 준비·출력과 날짜별 내역을 먼저 표시한다', () => {
+    const orderGroup = navigationGroups.find((g) => g.id === 'prepare')
     expect(orderGroup).toBeDefined()
     expect(orderGroup!.items).toHaveLength(2)
     expect(orderGroup!.items.map((i) => i.path)).not.toContain('/presets')
   })
 
-  it('레시피 그룹은 3페이지 (신규·목록·확인)', () => {
-    const recipeGroup = navigationGroups.find((g) => g.id === 'recipes')
+  it('원본 편집은 레시피와 원료·영양제 관리로 모은다', () => {
+    const recipeGroup = navigationGroups.find((g) => g.id === 'manage')
     expect(recipeGroup).toBeDefined()
-    expect(recipeGroup!.items).toHaveLength(3)
-    expect(recipeGroup!.items.map((i) => i.path)).toContain('/recipe-check')
+    expect(recipeGroup!.items).toHaveLength(2)
+    expect(recipeGroup!.items.map((i) => i.path)).toEqual([
+      '/recipes',
+      '/ingredients',
+    ])
   })
 
-  it('단가 메뉴는 별도 그룹으로 분리 (DL-024)', () => {
-    const priceGroup = navigationGroups.find((g) => g.id === 'prices')
-    expect(priceGroup).toBeDefined()
-    // 원료 그룹에 합쳐지지 않음
-    const ingredientPaths =
-      navigationGroups.find((g) => g.id === 'ingredients')?.items.map((i) => i.path) ?? []
-    expect(ingredientPaths).not.toContain('/prices')
+  it('사용하지 않는 단가·백업 메뉴를 표시하지 않는다', () => {
+    const paths = navigationGroups.flatMap((g) => g.items.map((i) => i.path))
+    expect(paths).not.toContain('/prices')
+    expect(paths).not.toContain('/settings')
   })
 
   it('각 라벨은 한국어 한 단어 이상', () => {

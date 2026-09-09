@@ -20,8 +20,8 @@ describe('sortFdcSearchFoods', () => {
     expect(sortFdcSearchFoods(foods, 'pumpkin').map((food) => food.description))
       .toEqual([
         'Pumpkin, raw',
-        'Pumpkin, cooked',
         'Pumpkin, canned, without salt',
+        'Pumpkin, cooked',
         'Bread, pumpkin',
         'PUMPKIN',
       ])
